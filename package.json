@@ -3,7 +3,7 @@
   "displayName": "NATS Admin — JetStream, KV & Dashboards",
   "description": "Operate NATS from VS Code: auto-discovered contexts, production-safe connections, fleet/server/stream/cluster dashboards, health checks, topology graph, Key-Value data-structure browser, message browser, live tail, consumer lab and JetStream config as code.",
   "version": "0.2.0",
-  "publisher": "nats-admin",
+  "publisher": "grok-rs",
   "license": "MIT",
   "private": true,
   "engines": {

@@ -54,7 +54,7 @@ function openWebviewTypes(): string[] {
 export async function run(): Promise<void> {
   const url = process.env.NATS_IT_URL!;
   const monitorUrl = process.env.NATS_IT_MONITOR!;
-  const ext = vscode.extensions.getExtension("nats-admin.nats-admin");
+  const ext = vscode.extensions.getExtension("grok-rs.nats-admin");
   assert.ok(ext, "extension is installed in the dev host");
   const api = (await ext.activate()) as ExtensionApi;
   await vscode.workspace.getConfiguration("nats").update("confirmDestructiveActions", false, vscode.ConfigurationTarget.Global);

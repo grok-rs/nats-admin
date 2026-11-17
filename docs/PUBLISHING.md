@@ -25,7 +25,7 @@ To preview a webview with mocked data, run `npm run build && node scripts/harnes
    - Organization: **All accessible organizations**
    - Scopes: **Custom defined → Marketplace → Manage**
 3. **Update `package.json`:**
-   - `"publisher"`: your publisher ID (currently the placeholder `nats-admin`);
+   - `"publisher"`: your publisher ID (set to `grok-rs`);
    - `"repository"`, `"bugs"`, `"homepage"`: your public repository. vsce uses `repository` to turn the README's relative image links (`docs/images/*.png`) into absolute URLs, so the screenshots must be pushed to that repository's default branch;
    - optionally the copyright holder in `LICENSE`.
 4. **Log in and publish:**
