@@ -86,10 +86,10 @@ class KvBrowserPanel extends WebviewPanelBase {
 
   protected handlers() {
     return {
-      load: async ({ filter, live }: { filter?: string; live: boolean }) => {
+      load: async ({ filter, live, max: maxOverride }: { filter?: string; live: boolean; max?: number }) => {
         this.stopWatch();
         const kv = await this.kv();
-        const max = cfg("kv.maxKeys", 5000);
+        const max = maxOverride && maxOverride > 0 ? Math.floor(maxOverride) : cfg("kv.maxKeys", 5000);
         const generation = Symbol();
         this.currentGen = generation;
         this.watch = await snapshotAndWatch(kv, {
@@ -113,6 +113,10 @@ class KvBrowserPanel extends WebviewPanelBase {
             );
           },
         });
+        return true;
+      },
+      openSetting: async () => {
+        await vscode.commands.executeCommand("workbench.action.openSettings", "nats.kv.maxKeys");
         return true;
       },
       stopLive: () => {

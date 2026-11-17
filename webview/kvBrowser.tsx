@@ -57,10 +57,11 @@ function App() {
   const [flash, setFlash] = useFlash();
   const pendingSelect = useRef<string | undefined>(init.selectKey);
 
-  const load = (f = appliedFilter, isLive = live) => {
+  const [maxKeys, setMaxKeys] = useState(init.maxKeys);
+  const load = (f = appliedFilter, isLive = live, max = maxKeys) => {
     setLoading(true);
     setError(null);
-    rpc("load", { filter: f || undefined, live: isLive }).catch((e) => {
+    rpc("load", { filter: f || undefined, live: isLive, max }).catch((e) => {
       setLoading(false);
       setError(String(e.message ?? e));
     });
@@ -198,9 +199,27 @@ function App() {
       {connState !== "connected" && <Notice tone="warn">Connection is {connState}. Live updates are paused.</Notice>}
       <ErrorBanner error={error} onDismiss={() => setError(null)} />
       {truncated && (
-        <Notice tone="warn">
-          Showing the first {fmtNumber(init.maxKeys)} keys (setting <code>nats.kv.maxKeys</code>). Narrow the view with a key filter.
-        </Notice>
+        <div class="banner banner-warn row wrap" role="status">
+          <Icon name="warning" />
+          <span class="banner-text">
+            Showing the first {fmtNumber(maxKeys)} keys. Narrow the view with a key filter (e.g. <code>app.&gt;</code>), load more, or raise the default limit.
+          </span>
+          <Button
+            small
+            icon="unfold"
+            title={`Load up to ${fmtNumber(maxKeys * 4)} keys in this view`}
+            onClick={() => {
+              const next = maxKeys * 4;
+              setMaxKeys(next);
+              load(appliedFilter, live, next);
+            }}
+          >
+            Load {fmtNumber(maxKeys * 4)}
+          </Button>
+          <Button small icon="settings-gear" title="Open the nats.kv.maxKeys setting" onClick={() => void rpc("openSetting")}>
+            Change limit…
+          </Button>
+        </div>
       )}
       {showAdd && (
         <AddKey

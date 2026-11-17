@@ -367,11 +367,14 @@ export class KvBucketNode extends CachedNode {
     }
     if (truncated) {
       nodes.push(
-        new MessageNode(this.connId, this, `Showing first ${max} keys — refine with a filter or open the KV Browser`, "warning", {
-          command: "nats.openKvBrowser",
-          title: "Open KV Browser",
-          arguments: [this],
-        }),
+        new MessageNode(
+          this.connId,
+          this,
+          `Showing first ${max} keys — click to change the limit (nats.kv.maxKeys)`,
+          "warning",
+          { command: "workbench.action.openSettings", title: "Change limit", arguments: ["nats.kv.maxKeys"] },
+          "Only the first keys are listed. Use “Filter Keys…” on the bucket, open the KV Browser (it can load more), or raise the nats.kv.maxKeys setting.",
+        ),
       );
     }
     return nodes;
