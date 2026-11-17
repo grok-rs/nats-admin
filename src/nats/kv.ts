@@ -1,6 +1,7 @@
 // Key-Value operations. Pure NATS logic — no vscode imports.
 
 import { KvWatchInclude, type KV, type KvEntry, type KvStatus, type Kvm } from "@nats-io/kv";
+import { DeliverPolicy, type JetStreamClient, type JsMsg } from "@nats-io/jetstream";
 import type { KvBucketDTO, KvEntryDTO } from "../shared/dto";
 import { bytesToBase64 } from "../shared/encoding";
 
@@ -23,7 +24,105 @@ export async function listBuckets(kvm: Kvm): Promise<KvBucketDTO[]> {
   return out.sort((a, b) => a.bucket.localeCompare(b.bucket));
 }
 
+
+// --- pull-based reads ---------------------------------------------------------
+// nats.js reads keys / watches / history through *push* consumers with flow
+// control, which require publish permission on $JS.FC.<stream>.> — restricted
+// (read-only / audit) accounts usually lack it ("Permissions Violation for
+// Publish to $JS.FC…"). Ordered *pull* consumers need no flow-control replies,
+// so we use them first and fall back to the client's push readers.
+
+interface BucketInternals {
+  js: JetStreamClient;
+  stream: string;
+  prefixLen: number;
+  subjectForKey(k: string): string;
+  decodeKey(k: string): string;
+}
+
+function internals(kv: KV): BucketInternals | undefined {
+  const b = kv as unknown as Partial<BucketInternals>;
+  return b.js && b.stream && typeof b.prefixLen === "number" && typeof b.subjectForKey === "function" && typeof b.decodeKey === "function" ? (b as BucketInternals) : undefined;
+}
+
+function opOf(m: JsMsg): KvEntry["operation"] {
+  const h = m.headers;
+  if (h?.get("Nats-Marker-Reason") === "MaxAge") return "PURGE";
+  const op = h?.get("KV-Operation");
+  return op === "DEL" || op === "PURGE" ? op : "PUT";
+}
+
+function msgToEntry(b: BucketInternals, bucket: string, m: JsMsg): KvEntry {
+  const rawKey = m.subject.substring(b.prefixLen);
+  const sizeHdr = m.headers?.get("Nats-Msg-Size");
+  const value = m.data;
+  return {
+    bucket,
+    key: b.decodeKey(rawKey),
+    rawKey,
+    value,
+    created: m.time,
+    revision: m.seq,
+    operation: opOf(m),
+    length: sizeHdr ? Number(sizeHdr) : value.length,
+    delta: m.info.pending,
+    json: <T>() => JSON.parse(new TextDecoder().decode(value)) as T,
+    string: () => new TextDecoder().decode(value),
+  };
+}
+
+/** Read with a short-lived ordered pull consumer; `onMsg` returns false to stop. */
+async function pullScan(b: BucketInternals, filter: string, deliver: DeliverPolicy, headersOnly: boolean, onMsg: (m: JsMsg) => boolean): Promise<void> {
+  const c = await b.js.consumers.get(b.stream, {
+    filter_subjects: b.subjectForKey(filter),
+    deliver_policy: deliver,
+    headers_only: headersOnly,
+    inactive_threshold: 10_000_000_000,
+  });
+  try {
+    for (;;) {
+      const it = await c.fetch({ max_messages: 500, expires: 2000 });
+      let got = 0;
+      let done = false;
+      for await (const m of it) {
+        got++;
+        if (!onMsg(m) || m.info.pending === 0) {
+          done = true;
+          break;
+        }
+      }
+      if (done || got === 0) break;
+    }
+  } finally {
+    c.delete().catch(() => undefined);
+  }
+}
+
+/** Latest entry per key via pull (or undefined when pull reads aren't possible). */
+async function pullLatest(kv: KV, filter: string | undefined, max: number, headersOnly: boolean): Promise<{ entries: KvEntry[]; truncated: boolean } | undefined> {
+  const b = internals(kv);
+  if (!b) return undefined;
+  const status = await kv.status();
+  if (status.values === 0) return { entries: [], truncated: false };
+  const latest = new Map<string, KvEntry>();
+  let truncated = false;
+  await pullScan(b, filter?.trim() || ">", DeliverPolicy.LastPerSubject, headersOnly, (m) => {
+    const e = msgToEntry(b, status.bucket, m);
+    if (e.operation !== "PUT") latest.delete(e.key);
+    else if (latest.size < max || latest.has(e.key)) latest.set(e.key, e);
+    else truncated = true;
+    return true;
+  });
+  return { entries: [...latest.values()], truncated };
+}
+
 export async function listKeys(kv: KV, filter: string | undefined, max: number): Promise<{ keys: string[]; truncated: boolean }> {
+  try {
+    const pulled = await pullLatest(kv, filter, max, true);
+    if (pulled) return { keys: pulled.entries.map((e) => e.key), truncated: pulled.truncated };
+  } catch {
+    /* pull reads not permitted — fall back to the client's push-based reader */
+  }
   const it = await kv.keys(filter?.trim() || ">");
   const keys: string[] = [];
   let truncated = false;
@@ -53,10 +152,21 @@ export function entryToDTO(e: KvEntry, maxValueBytes = Infinity): KvEntryDTO {
 }
 
 export async function history(kv: KV, key: string): Promise<KvEntry[]> {
+  const b = internals(kv);
+  if (b) {
+    try {
+      const out: KvEntry[] = [];
+      const bucket = (await kv.status()).bucket;
+      await pullScan(b, key, DeliverPolicy.All, false, (m) => (out.push(msgToEntry(b, bucket, m)), true));
+      return out.sort((x, y) => y.revision - x.revision);
+    } catch {
+      /* fall back to push-based history */
+    }
+  }
   const it = await kv.history({ key });
   const out: KvEntry[] = [];
   for await (const e of it) out.push(e);
-  return out.sort((a, b) => b.revision - a.revision);
+  return out.sort((a, b2) => b2.revision - a.revision);
 }
 
 export interface WatchHandle {
@@ -80,6 +190,54 @@ export async function snapshotAndWatch(
     onError?: (err: Error) => void;
   },
 ): Promise<WatchHandle> {
+  // Snapshot via pull (no flow control). When live, an updates-only watcher is
+  // started *before* the snapshot and buffered, so nothing changed in between
+  // is lost; buffered updates older than the snapshot entry are dropped.
+  const key = opts.filter?.trim() || ">";
+  let liveStopped = false;
+  let watcher: Awaited<ReturnType<KV["watch"]>> | undefined;
+  let delivered = false;
+  const buffer: KvEntryDTO[] = [];
+  if (opts.live) {
+    try {
+      watcher = await kv.watch({ key, include: KvWatchInclude.UpdatesOnly });
+      const w = watcher;
+      void (async () => {
+        try {
+          for await (const e of w) {
+            const dto = entryToDTO(e, opts.maxValueBytes);
+            if (delivered) opts.onUpdate?.(dto);
+            else buffer.push(dto);
+          }
+        } catch (err) {
+          if (!liveStopped) opts.onError?.(err instanceof Error ? err : new Error(String(err)));
+        }
+      })();
+    } catch (err) {
+      opts.onError?.(err instanceof Error ? err : new Error(String(err)));
+    }
+  }
+  let pulled: { entries: KvEntry[]; truncated: boolean } | undefined;
+  try {
+    pulled = await pullLatest(kv, opts.filter, opts.max, false);
+  } catch {
+    pulled = undefined;
+  }
+  if (pulled) {
+    const snapshot = pulled.entries.map((e) => entryToDTO(e, opts.maxValueBytes));
+    opts.onInitial(snapshot, pulled.truncated);
+    const seen = new Map(snapshot.map((e) => [e.key, e.revision]));
+    delivered = true;
+    for (const u of buffer.splice(0)) if (u.revision > (seen.get(u.key) ?? 0)) opts.onUpdate?.(u);
+    return {
+      stop: () => {
+        liveStopped = true;
+        watcher?.stop();
+      },
+    };
+  }
+  watcher?.stop();
+
   const status = await kv.status();
   const it = await kv.watch({ key: opts.filter?.trim() || ">", include: KvWatchInclude.LastValue });
   const snapshot = new Map<string, KvEntryDTO>();

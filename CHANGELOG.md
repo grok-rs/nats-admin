@@ -3,6 +3,7 @@
 ## 0.2.1
 
 - Fix "command 'nats.explorer.focus' not found" from the Getting Started walkthrough and Overview actions: a new `NATS: Show NATS Explorer` command opens the view container reliably.
+- KV keys, KV Browser snapshots and key history are read with pull consumers, so restricted / read-only accounts without publish permission on `$JS.FC.>` no longer hit "Permissions Violation for Publish to $JS.FC…". Live updates explain the permission if they are refused.
 - Resizable table columns in every panel: drag a column edge (or focus it and use ←/→), double-click to reset; widths are remembered per table.
 
 ## 0.2.0

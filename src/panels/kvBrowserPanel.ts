@@ -103,7 +103,15 @@ class KvBrowserPanel extends WebviewPanelBase {
           onUpdate: (e) => {
             if (this.currentGen === generation) this.queueUpdate(e);
           },
-          onError: (err) => this.post("error", errorMessage(err)),
+          onError: (err) => {
+            const msg = errorMessage(err);
+            this.post(
+              "error",
+              /\$JS\.FC/.test(msg)
+                ? 'Live updates stopped: this account may not publish flow-control replies ($JS.FC.>). The snapshot above is complete — use Reload to refresh it, or ask for publish permission on "$JS.FC.>".'
+                : msg,
+            );
+          },
         });
         return true;
       },
