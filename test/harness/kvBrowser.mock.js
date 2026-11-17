@@ -56,10 +56,24 @@
     separator: ".",
     maxKeys: 5000,
   };
+  // Large bucket: 18,000 game keys so lazy loading / virtualization can be exercised.
+  const regions = ["eu", "us", "apac", "latam"];
+  for (let i = 0; i < 18000; i++) {
+    const v = JSON.stringify({ id: i, region: regions[i % 4], players: i % 97, state: i % 3 ? "running" : "lobby" });
+    entries.push(mk(`games.${regions[i % 4]}.table${String(i).padStart(5, "0")}.state`, v, (i % 3600) + 5));
+  }
+  const byKey = new Map(entries.map((e) => [e.key, e]));
+  window.__VALUE_REQUESTS__ = [];
   window.__MOCK__ = {
     load: () => {
-      setTimeout(() => window.__emit("snapshot", { entries: q.get("empty") === "1" ? [] : entries, truncated: false, max: 5000 }), 150);
+      // headers-only snapshot: no data; values come from values()
+      const meta = entries.map(({ data, ...m }) => m);
+      setTimeout(() => window.__emit("snapshot", { entries: q.get("empty") === "1" ? [] : meta, truncated: false, max: 100000 }), 150);
       return true;
+    },
+    values: ({ keys }) => {
+      window.__VALUE_REQUESTS__.push(keys.length);
+      return keys.map((k) => byKey.get(k)).filter(Boolean);
     },
     stopLive: () => true,
     status: () => window.__MOCK_INIT__.status,

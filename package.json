@@ -1458,9 +1458,9 @@
         },
         "nats.kv.maxKeys": {
           "type": "number",
-          "default": 5000,
+          "default": 100000,
           "minimum": 1,
-          "description": "Maximum number of keys loaded per bucket in the explorer tree and KV Browser."
+          "description": "Maximum number of keys loaded per bucket in the explorer tree and KV Browser. Only keys and metadata are loaded up front; values are fetched on demand."
         },
         "nats.kv.prettyPrintJson": {
           "type": "boolean",

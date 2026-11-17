@@ -140,3 +140,20 @@
   max-width: none;
   transform: none;
 }
+
+/* virtualized key table: fixed row height so windowing math stays exact */
+.kv-vtable tbody tr:not(.kv-spacer) {
+  height: 26px;
+}
+
+.kv-vtable td {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kv-vtable .kv-spacer td,
+.kv-vtable .kv-spacer {
+  padding: 0;
+  border: 0;
+}

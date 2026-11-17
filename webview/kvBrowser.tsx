@@ -22,7 +22,11 @@ const SEP = init.separator;
 
 type Kind = { label: string; tone: "accent" | "neutral" | "warn" | "info" };
 
+/** Values are loaded lazily: `data === undefined` means "not fetched yet". */
+const isLoaded = (e: KvEntryDTO) => e.data !== undefined;
+
 function kindOf(e: KvEntryDTO): Kind {
+  if (e.data === undefined) return { label: "…", tone: "neutral" };
   if (!e.data) return { label: "empty", tone: "neutral" };
   const d = detect(base64ToBytes(e.data));
   if (d.format === "json") return { label: d.kind, tone: d.kind === "object" || d.kind === "array" ? "accent" : "info" };
@@ -58,6 +62,64 @@ function App() {
   const pendingSelect = useRef<string | undefined>(init.selectKey);
 
   const [maxKeys, setMaxKeys] = useState(init.maxKeys);
+
+  // --- lazy values: fetch only what's on screen / selected / requested ---------
+  const entriesRef = useRef(entries);
+  entriesRef.current = entries;
+  const inflight = useRef(new Set<string>());
+  const queue = useRef(new Set<string>());
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const flushValues = async () => {
+    timer.current = undefined;
+    const keys = [...queue.current].slice(0, 200);
+    keys.forEach((k) => (queue.current.delete(k), inflight.current.add(k)));
+    if (!keys.length) return;
+    try {
+      const got = await rpc<KvEntryDTO[]>("values", { keys });
+      setEntries((prev) => {
+        const next = new Map(prev);
+        for (const e of got) {
+          const cur = next.get(e.key);
+          if (!cur || e.revision >= cur.revision) next.set(e.key, e);
+        }
+        return next;
+      });
+    } catch {
+      /* transient: rows will ask again when re-rendered */
+    } finally {
+      keys.forEach((k) => inflight.current.delete(k));
+      if (queue.current.size) timer.current = setTimeout(() => void flushValues(), 0);
+    }
+  };
+  const ensureValues = (keys: string[]) => {
+    let added = false;
+    for (const k of keys) {
+      const e = entriesRef.current.get(k);
+      if (e && !isLoaded(e) && !inflight.current.has(k) && !queue.current.has(k)) {
+        queue.current.add(k);
+        added = true;
+      }
+    }
+    if (added && !timer.current) timer.current = setTimeout(() => void flushValues(), 60);
+  };
+  /** Load values for up to `limit` keys (structure analysis); resolves when done. */
+  const loadValuesFor = async (keys: string[], limit = 2000) => {
+    const missing = keys.filter((k) => {
+      const e = entriesRef.current.get(k);
+      return e && !isLoaded(e);
+    }).slice(0, limit);
+    for (let i = 0; i < missing.length; i += 200) {
+      const got = await rpc<KvEntryDTO[]>("values", { keys: missing.slice(i, i + 200) });
+      setEntries((prev) => {
+        const next = new Map(prev);
+        for (const e of got) {
+          const cur = next.get(e.key);
+          if (!cur || e.revision >= cur.revision) next.set(e.key, e);
+        }
+        return next;
+      });
+    }
+  };
   const load = (f = appliedFilter, isLive = live, max = maxKeys) => {
     setLoading(true);
     setError(null);
@@ -118,6 +180,9 @@ function App() {
   }, [entries, search]);
 
   const selectedEntry = selection?.type === "key" ? entries.get(selection.key) : undefined;
+  useEffect(() => {
+    if (selectedEntry && !isLoaded(selectedEntry)) ensureValues([selectedEntry.key]);
+  }, [selectedEntry?.key, selectedEntry?.revision, selectedEntry && isLoaded(selectedEntry)]);
   const scoped = useMemo(() => {
     if (selection?.type !== "prefix") return visible;
     const p = selection.prefix;
@@ -157,7 +222,7 @@ function App() {
           <input class="input mono" style={{ width: "220px" }} placeholder="key filter: app.> or *.url" title="Server-side NATS wildcard filter (* and >)" value={filter} onInput={(e) => setFilter((e.target as HTMLInputElement).value)} />
           <Button small icon="filter" title="Apply filter" type="submit" />
         </form>
-        <input class="input" style={{ width: "200px" }} placeholder="Search keys & values…" value={search} onInput={(e) => setSearch((e.target as HTMLInputElement).value)} />
+        <input class="input" style={{ width: "200px" }} placeholder="Search keys (and loaded values)…" value={search} onInput={(e) => setSearch((e.target as HTMLInputElement).value)} />
         <div class="seg">
           <button type="button" class={cx("seg-btn", view === "tree" && "seg-active")} onClick={() => setView("tree")} title="Group keys by '{SEP}'">
             <Icon name="list-tree" /> Tree
@@ -245,9 +310,9 @@ function App() {
               Use “Add key” to create one.
             </Empty>
           ) : view === "tree" ? (
-            <KeyTree entries={visible} selection={selection} onSelect={setSelection} flashKeys={flashKeys} forceOpen={Boolean(search)} />
+            <KeyTree entries={visible} selection={selection} onSelect={setSelection} flashKeys={flashKeys} forceOpen={Boolean(search) && visible.length <= 2000} onVisible={ensureValues} />
           ) : (
-            <KeyTable entries={visible} selection={selection} onSelect={setSelection} flashKeys={flashKeys} />
+            <KeyTable entries={visible} selection={selection} onSelect={setSelection} flashKeys={flashKeys} onVisible={ensureValues} />
           )}
         </div>
         <div class="col grow" style={{ gap: 0 }}>
@@ -269,7 +334,7 @@ function App() {
               </Empty>
             )
           ) : (
-            <Overview entries={scoped} prefix={selection?.type === "prefix" ? selection.prefix : undefined} total={entries.size} loading={loading && entries.size === 0} onSelectKey={(key) => setSelection({ type: "key", key })} />
+            <Overview entries={scoped} prefix={selection?.type === "prefix" ? selection.prefix : undefined} total={entries.size} loading={loading && entries.size === 0} onSelectKey={(key) => setSelection({ type: "key", key })} onLoadValues={(keys) => loadValuesFor(keys)} />
           )}
         </div>
       </SplitPane>
@@ -279,18 +344,60 @@ function App() {
 
 // --- left pane: tree --------------------------------------------------------------
 
+/** Windowed rendering for long lists: only rows in view (+ overscan) are mounted. */
+function useVirtual(count: number, rowHeight: number, overscan = 15) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [range, setRange] = useState({ start: 0, end: 80 });
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      const start = Math.max(0, Math.floor(el.scrollTop / rowHeight) - overscan);
+      const end = Math.min(count, Math.ceil((el.scrollTop + el.clientHeight) / rowHeight) + overscan);
+      setRange((r) => (r.start === start && r.end === end ? r : { start, end }));
+    };
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(update);
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    const ro = new ResizeObserver(onScroll);
+    ro.observe(el);
+    update();
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      ro.disconnect();
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [count, rowHeight, overscan]);
+  return { ref, start: Math.min(range.start, count), end: Math.min(range.end, count) };
+}
+
+const TREE_ROW = 22;
+const TABLE_ROW = 26;
+
+interface TreeRow {
+  node: KeyTreeNode;
+  depth: number;
+  isFolder: boolean;
+  isOpen: boolean;
+}
+
 function KeyTree({
   entries,
   selection,
   onSelect,
   flashKeys,
   forceOpen,
+  onVisible,
 }: {
   entries: KvEntryDTO[];
   selection: Selection;
   onSelect: (s: Selection) => void;
   flashKeys: Set<string>;
   forceOpen: boolean;
+  onVisible: (keys: string[]) => void;
 }) {
   const byKey = useMemo(() => new Map(entries.map((e) => [e.key, e])), [entries]);
   const root = useMemo(() => buildKeyTree(entries.map((e) => e.key), SEP), [entries]);
@@ -316,48 +423,64 @@ function KeyTree({
       onSelect(child.isKey ? { type: "key", key: child.path } : { type: "prefix", prefix: child.path });
     } else onSelect({ type: "key", key: child.path });
   };
-  const rows: preact.JSX.Element[] = [];
-  const walk = (node: KeyTreeNode, depth: number) => {
-    for (const child of sortedChildren(node)) {
-      const isFolder = child.children.size > 0;
-      const isOpen = forceOpen || open.has(child.path);
-      const e = child.isKey ? byKey.get(child.path) : undefined;
-      const selected = (selection?.type === "key" && selection.key === child.path) || (selection?.type === "prefix" && selection.prefix === child.path);
-      const kind = e ? kindOf(e) : undefined;
-      rows.push(
-        <div
-          key={child.path}
-          class={cx("tree-row", selected && "selected", e && flashKeys.has(child.path) && "flash-row")}
-          style={{ paddingLeft: `${depth * 14 + 6}px` }}
-          title={child.path}
-          role="treeitem"
-          tabIndex={0}
-          aria-expanded={isFolder ? isOpen : undefined}
-          aria-selected={selected}
-          onClick={() => activate(child, isFolder)}
-          onKeyDown={(ev) => {
-            if (ev.key === "Enter" || ev.key === " ") {
-              ev.preventDefault();
-              activate(child, isFolder);
-            }
-          }}
-        >
-          {isFolder ? <Icon name={isOpen ? "chevron-down" : "chevron-right"} class="twisty" /> : <span class="twisty" />}
-          <Icon name={isFolder ? (child.isKey ? "symbol-object" : isOpen ? "folder-opened" : "folder") : "symbol-field"} class="tree-icon" />
-          <span class="tree-name">{child.name}</span>
-          {isFolder && <span class="muted small">{child.count}</span>}
-          <span class="spacer" />
-          {kind && <Badge tone={kind.tone}>{kind.label}</Badge>}
-          {e && <span class="muted small num">{fmtBytes(e.size)}</span>}
-        </div>,
-      );
-      if (isFolder && isOpen) walk(child, depth + 1);
-    }
-  };
-  walk(root, 0);
+
+  // Flatten the expanded part of the tree into row descriptors (cheap), render only the window.
+  const rows = useMemo(() => {
+    const out: TreeRow[] = [];
+    const walk = (node: KeyTreeNode, depth: number) => {
+      for (const child of sortedChildren(node)) {
+        const isFolder = child.children.size > 0;
+        const isOpen = forceOpen || open.has(child.path);
+        out.push({ node: child, depth, isFolder, isOpen });
+        if (isFolder && isOpen) walk(child, depth + 1);
+      }
+    };
+    walk(root, 0);
+    return out;
+  }, [root, open, forceOpen]);
+
+  const { ref, start, end } = useVirtual(rows.length, TREE_ROW);
+  useEffect(() => {
+    onVisible(rows.slice(start, end).filter((r) => r.node.isKey).map((r) => r.node.path));
+  }, [rows, start, end, entries]);
+
   return (
-    <div class="list tree" role="tree" aria-label="Keys">
-      {rows}
+    <div class="list tree" role="tree" aria-label="Keys" ref={ref}>
+      <div style={{ height: `${start * TREE_ROW}px` }} aria-hidden="true" />
+      {rows.slice(start, end).map(({ node: child, depth, isFolder, isOpen }) => {
+        const e = child.isKey ? byKey.get(child.path) : undefined;
+        const selected = (selection?.type === "key" && selection.key === child.path) || (selection?.type === "prefix" && selection.prefix === child.path);
+        const kind = e ? kindOf(e) : undefined;
+        return (
+          <div
+            key={child.path}
+            class={cx("tree-row", selected && "selected", e && flashKeys.has(child.path) && "flash-row")}
+            style={{ paddingLeft: `${depth * 14 + 6}px` }}
+            title={child.path}
+            role="treeitem"
+            tabIndex={0}
+            aria-level={depth + 1}
+            aria-expanded={isFolder ? isOpen : undefined}
+            aria-selected={selected}
+            onClick={() => activate(child, isFolder)}
+            onKeyDown={(ev) => {
+              if (ev.key === "Enter" || ev.key === " ") {
+                ev.preventDefault();
+                activate(child, isFolder);
+              }
+            }}
+          >
+            {isFolder ? <Icon name={isOpen ? "chevron-down" : "chevron-right"} class="twisty" /> : <span class="twisty" />}
+            <Icon name={isFolder ? (child.isKey ? "symbol-object" : isOpen ? "folder-opened" : "folder") : "symbol-field"} class="tree-icon" />
+            <span class="tree-name">{child.name}</span>
+            {isFolder && <span class="muted small">{fmtNumber(child.count)}</span>}
+            <span class="spacer" />
+            {kind && <Badge tone={kind.tone}>{kind.label}</Badge>}
+            {e && <span class="muted small num">{fmtBytes(e.size)}</span>}
+          </div>
+        );
+      })}
+      <div style={{ height: `${(rows.length - end) * TREE_ROW}px` }} aria-hidden="true" />
     </div>
   );
 }
@@ -366,7 +489,19 @@ function KeyTree({
 
 type SortKey = "key" | "type" | "size" | "revision" | "created";
 
-function KeyTable({ entries, selection, onSelect, flashKeys }: { entries: KvEntryDTO[]; selection: Selection; onSelect: (s: Selection) => void; flashKeys: Set<string> }) {
+function KeyTable({
+  entries,
+  selection,
+  onSelect,
+  flashKeys,
+  onVisible,
+}: {
+  entries: KvEntryDTO[];
+  selection: Selection;
+  onSelect: (s: Selection) => void;
+  flashKeys: Set<string>;
+  onVisible: (keys: string[]) => void;
+}) {
   const [sort, setSort] = useState<{ by: SortKey; dir: 1 | -1 }>({ by: "key", dir: 1 });
   const sorted = useMemo(() => {
     const collator = new Intl.Collator(undefined, { numeric: true });
@@ -377,14 +512,18 @@ function KeyTable({ entries, selection, onSelect, flashKeys }: { entries: KvEntr
       return (typeof va === "number" && typeof vb === "number" ? va - vb : collator.compare(String(va), String(vb))) * sort.dir;
     });
   }, [entries, sort]);
+  const { ref, start, end } = useVirtual(sorted.length, TABLE_ROW);
+  useEffect(() => {
+    onVisible(sorted.slice(start, end).map((e) => e.key));
+  }, [sorted, start, end]);
   const th = (by: SortKey, label: string, cls?: string) => (
     <th class={cls} style={{ cursor: "pointer" }} onClick={() => setSort((s) => ({ by, dir: s.by === by ? ((-s.dir) as 1 | -1) : 1 }))}>
       {label} {sort.by === by && <Icon name={sort.dir === 1 ? "arrow-up" : "arrow-down"} />}
     </th>
   );
   return (
-    <div class="list">
-      <table class="table">
+    <div class="list" ref={ref}>
+      <table class="table kv-vtable">
         <thead>
           <tr>
             {th("key", "Key")}
@@ -396,7 +535,8 @@ function KeyTable({ entries, selection, onSelect, flashKeys }: { entries: KvEntr
           </tr>
         </thead>
         <tbody>
-          {sorted.map((e) => {
+          {start > 0 && <tr class="kv-spacer" style={{ height: `${start * TABLE_ROW}px` }} aria-hidden="true" />}
+          {sorted.slice(start, end).map((e) => {
             const k = kindOf(e);
             return (
               <tr
@@ -408,7 +548,7 @@ function KeyTable({ entries, selection, onSelect, flashKeys }: { entries: KvEntr
                 <td>
                   <Badge tone={k.tone}>{k.label}</Badge>
                 </td>
-                <td class="preview">{payloadPreview(e.data ?? "")}</td>
+                <td class="preview">{isLoaded(e) ? payloadPreview(e.data ?? "") : <span class="muted">loading…</span>}</td>
                 <td class="num">{fmtBytes(e.size)}</td>
                 <td class="num">{e.revision}</td>
                 <td class="muted small" title={fmtTime(e.created)}>
@@ -417,6 +557,7 @@ function KeyTable({ entries, selection, onSelect, flashKeys }: { entries: KvEntr
               </tr>
             );
           })}
+          {end < sorted.length && <tr class="kv-spacer" style={{ height: `${(sorted.length - end) * TABLE_ROW}px` }} aria-hidden="true" />}
         </tbody>
       </table>
     </div>
@@ -430,7 +571,22 @@ function agoParts(iso: string | undefined): string {
   return iso ? fmtAgo(iso) : "–";
 }
 
-function Overview({ entries, prefix, total, loading, onSelectKey }: { entries: KvEntryDTO[]; prefix?: string; total: number; loading?: boolean; onSelectKey?: (key: string) => void }) {
+function Overview({
+  entries,
+  prefix,
+  total,
+  loading,
+  onSelectKey,
+  onLoadValues,
+}: {
+  entries: KvEntryDTO[];
+  prefix?: string;
+  total: number;
+  loading?: boolean;
+  onSelectKey?: (key: string) => void;
+  onLoadValues?: (keys: string[]) => Promise<void>;
+}) {
+  const [analyzing, setAnalyzing] = useState(false);
   const [metric, setMetric] = useState<PrefixMetric>("keys");
   const stats = useMemo(() => {
     const kinds = new Map<string, number>();
@@ -440,9 +596,13 @@ function Overview({ entries, prefix, total, loading, onSelectKey }: { entries: K
     let largest: KvEntryDTO | undefined;
     const sizes: number[] = [];
     const times: number[] = [];
+    let loadedCount = 0;
     for (const e of entries) {
-      const k = kindOf(e).label;
-      kinds.set(k, (kinds.get(k) ?? 0) + 1);
+      if (isLoaded(e)) {
+        loadedCount++;
+        const k = kindOf(e).label;
+        kinds.set(k, (kinds.get(k) ?? 0) + 1);
+      }
       size += e.size;
       sizes.push(e.size);
       const t = Date.parse(e.created);
@@ -456,7 +616,7 @@ function Overview({ entries, prefix, total, loading, onSelectKey }: { entries: K
     const now = Date.now();
     const win = activityWindow(times, now);
     const buckets = win ? bucketize(times, { start: win.start, end: win.end, bucketMs: win.bucketMs, agg: "count" }) : [];
-    return { kinds, size, shape: aggregateShape(jsonValues), newest, largest, sizes, sorted, win, buckets };
+    return { kinds, size, shape: aggregateShape(jsonValues), newest, largest, sizes, sorted, win, buckets, loadedCount };
   }, [entries]);
 
   // Key-space treemap: skip a single shared prefix (the selected folder) so tiles show its contents.
@@ -552,7 +712,8 @@ function Overview({ entries, prefix, total, loading, onSelectKey }: { entries: K
               <SizeHistogram sizes={stats.sizes} sorted={stats.sorted} />
             </Card>
             <Card span={6} title="Value types" subtitle="keys by detected payload type" icon="symbol-misc" loading={loading} tableView={() => <ItemsTable items={donut.map((d) => ({ label: d.label, value: d.value }))} unit="count" labelHeader="Type" valueHeader="Keys" caption="Keys by value type" />}>
-              <Donut label="Keys by value type" data={donut} unit="count" size={116} thickness={13} centerLabel="keys" emptyText="No values" />
+              <Donut label="Keys by value type (loaded values)" data={donut} unit="count" size={116} thickness={13} centerLabel="loaded" emptyText="No values loaded yet" />
+              {stats.loadedCount < entries.length && <div class="muted small">{fmtNumber(stats.loadedCount)} of {fmtNumber(entries.length)} values loaded</div>}
             </Card>
             <Card
               span={12}
@@ -600,6 +761,25 @@ function Overview({ entries, prefix, total, loading, onSelectKey }: { entries: K
               flush={stats.shape.documents > 0}
               loading={loading}
             >
+{stats.loadedCount < entries.length && onLoadValues && (
+                <div class="banner banner-info row wrap" style={{ margin: "0 0 8px" }}>
+                  <Icon name="info" />
+                  <span class="banner-text">
+                    Based on {fmtNumber(stats.loadedCount)} of {fmtNumber(entries.length)} values — values load on demand.
+                  </span>
+                  <Button
+                    small
+                    icon="cloud-download"
+                    busy={analyzing}
+                    onClick={() => {
+                      setAnalyzing(true);
+                      void onLoadValues(entries.map((e) => e.key)).finally(() => setAnalyzing(false));
+                    }}
+                  >
+                    Load {fmtNumber(Math.min(2000, entries.length - stats.loadedCount))} values
+                  </Button>
+                </div>
+              )}
               {stats.shape.documents === 0 ? (
                 <p class="muted">No JSON objects or arrays {prefix ? "under this prefix" : "in this view"}. Select a key to inspect its value.</p>
               ) : (
@@ -720,12 +900,12 @@ function KeyDetail({ entry, onDeleted, flash }: { entry: KvEntryDTO; onDeleted: 
         onChange={setTab}
         tabs={[
           { id: "value", label: "Value", icon: "eye" },
-          { id: "edit", label: "Edit", icon: "edit", disabled: kind.label === "binary" || entry.truncated },
+          { id: "edit", label: "Edit", icon: "edit", disabled: !isLoaded(entry) || kind.label === "binary" || entry.truncated },
           { id: "history", label: "History", icon: "history" },
           { id: "structure", label: "Structure", icon: "type-hierarchy", disabled: json === undefined || json === null || typeof json !== "object" },
         ]}
       />
-      {tab === "value" && <PayloadView data={entry.data ?? ""} showHeaders={false} />}
+      {tab === "value" && (isLoaded(entry) ? <PayloadView data={entry.data ?? ""} showHeaders={false} /> : <p class="muted"><Icon name="loading" spin /> Loading value…</p>)}
       {tab === "edit" && <Editor entry={entry} onSaved={(rev) => (flash(`Saved revision ${rev}`), setTab("value"))} />}
       {tab === "history" && <History entry={entry} flash={flash} />}
       {tab === "structure" && <Structure value={json} />}

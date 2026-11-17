@@ -4,6 +4,7 @@
 
 - Fix "command 'nats.explorer.focus' not found" from the Getting Started walkthrough and Overview actions: a new `NATS: Show NATS Explorer` command opens the view container reliably.
 - KV keys, KV Browser snapshots and key history are read with pull consumers, so restricted / read-only accounts without publish permission on `$JS.FC.>` no longer hit "Permissions Violation for Publish to $JS.FC…". Live updates explain the permission if they are refused.
+- KV Browser loads **all keys lazily**: keys and metadata (revision, size, time) first, values on demand for the rows on screen, the selected key, or a structure-analysis sample. Tree and table are virtualized, so buckets with tens of thousands of keys stay fast. Default `nats.kv.maxKeys` raised to 100,000.
 - The "first N keys" notice now has **Load more** and **Change limit…** buttons (KV Browser), and the explorer hint opens the `nats.kv.maxKeys` setting directly.
 - Resizable table columns in every panel: drag a column edge (or focus it and use ←/→), double-click to reset; widths are remembered per table.
 

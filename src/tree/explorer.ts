@@ -351,7 +351,7 @@ export class KvBucketNode extends CachedNode {
   }
   protected async load(): Promise<NatsNode[]> {
     const kv = await this.lc.kvm().open(this.name);
-    const max = cfg("kv.maxKeys", 5000);
+    const max = cfg("kv.maxKeys", 100000);
     const { keys, truncated } = await listKeys(kv, this.filter, max);
     this.truncated = truncated;
     this.keyTree = buildKeyTree(keys, this.separator);

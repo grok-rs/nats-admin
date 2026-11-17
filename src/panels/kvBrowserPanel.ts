@@ -7,7 +7,7 @@ import { writeFile } from "node:fs/promises";
 import type { KV } from "@nats-io/kv";
 import type { Services } from "../services";
 import { WebviewPanelBase } from "./webviewHost";
-import { bucketToDTO, entryToDTO, history, snapshotAndWatch, type WatchHandle } from "../nats/kv";
+import { bucketToDTO, entryToDTO, getValues, history, snapshotAndWatch, type WatchHandle } from "../nats/kv";
 import type { KvBucketDTO, KvEntryDTO } from "../shared/dto";
 import { base64ToBytes } from "../shared/encoding";
 import { detect } from "../shared/payload";
@@ -89,7 +89,7 @@ class KvBrowserPanel extends WebviewPanelBase {
       load: async ({ filter, live, max: maxOverride }: { filter?: string; live: boolean; max?: number }) => {
         this.stopWatch();
         const kv = await this.kv();
-        const max = maxOverride && maxOverride > 0 ? Math.floor(maxOverride) : cfg("kv.maxKeys", 5000);
+        const max = maxOverride && maxOverride > 0 ? Math.floor(maxOverride) : cfg("kv.maxKeys", 100000);
         const generation = Symbol();
         this.currentGen = generation;
         this.watch = await snapshotAndWatch(kv, {
@@ -97,6 +97,7 @@ class KvBrowserPanel extends WebviewPanelBase {
           max,
           maxValueBytes: MAX_VALUE_BYTES,
           live,
+          headersOnly: true,
           onInitial: (entries, truncated) => {
             if (this.currentGen === generation) this.post("snapshot", { entries, truncated, max });
           },
@@ -115,6 +116,7 @@ class KvBrowserPanel extends WebviewPanelBase {
         });
         return true;
       },
+      values: async ({ keys }: { keys: string[] }) => getValues(await this.kv(), (keys ?? []).slice(0, 500), MAX_VALUE_BYTES),
       openSetting: async () => {
         await vscode.commands.executeCommand("workbench.action.openSettings", "nats.kv.maxKeys");
         return true;
@@ -215,7 +217,7 @@ export async function openKvBrowser(s: Services, lc: LiveConnection, bucket: str
     bucket,
     status,
     separator: cfg("kv.keySeparator", "."),
-    maxKeys: cfg("kv.maxKeys", 5000),
+    maxKeys: cfg("kv.maxKeys", 100000),
     filter: opts.filter,
     selectKey: opts.selectKey,
   });

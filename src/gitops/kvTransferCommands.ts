@@ -30,7 +30,7 @@ function defaultDir(): vscode.Uri | undefined {
 export async function kvExport(s: Services, arg: unknown): Promise<void> {
   const { lc, bucket } = await resolveBucket(s, arg);
   const kv = await lc.kvm().open(bucket);
-  const max = cfg("kv.maxKeys", 5000) * 20;
+  const max = Math.max(cfg("kv.maxKeys", 100000), 100000);
   const result = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: `Reading ${bucket}…`, cancellable: true }, (progress, token) =>
     readAllEntries(kv, { max, token, onProgress: (n) => progress.report({ message: `${n} keys` }) }),
   );

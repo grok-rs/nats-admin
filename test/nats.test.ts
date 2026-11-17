@@ -16,7 +16,7 @@ import { Kvm } from "@nats-io/kv";
 import { Objm } from "@nats-io/obj";
 import { Svcm } from "@nats-io/services";
 import { browseMessages, listConsumers, listStreams } from "../src/nats/streams";
-import { history, listBuckets, listKeys, snapshotAndWatch } from "../src/nats/kv";
+import { getValues, history, listBuckets, listKeys, snapshotAndWatch } from "../src/nats/kv";
 import { downloadToFile, listObjBuckets, listObjects, readObject, uploadFile } from "../src/nats/obj";
 import { discoverServices } from "../src/nats/services";
 import { fetchMonitor, type VarzLite } from "../src/nats/monitor";
@@ -183,6 +183,24 @@ describe("NATS service layer (live server)", { skip: !hasServer && "nats-server 
       void snapshotAndWatch(empty, { max: 10, maxValueBytes: 10, live: false, onInitial: (e) => resolve(e.length) });
     });
     assert.equal(emptySnap, 0);
+  });
+
+  test("kv lazy loading: headers-only snapshot of many keys, then values on demand", async () => {
+    const kv = await new Kvm(js).create("lazy", { history: 1 });
+    await Promise.all(Array.from({ length: 1500 }, (_, i) => kv.put(`games.t${i}.state`, JSON.stringify({ i, pad: "x".repeat(100) }))));
+    const meta = await new Promise<{ n: number; withData: number; sized: number }>((resolve) => {
+      void snapshotAndWatch(kv, {
+        max: 100000,
+        maxValueBytes: 1024,
+        live: false,
+        headersOnly: true,
+        onInitial: (entries) => resolve({ n: entries.length, withData: entries.filter((e) => e.data !== undefined).length, sized: entries.filter((e) => e.size > 100).length }),
+      });
+    });
+    assert.deepEqual(meta, { n: 1500, withData: 0, sized: 1500 }, "all keys, no values, real sizes from headers");
+    const vals = await getValues(kv, ["games.t7.state", "games.t1499.state", "missing.key"], 1024);
+    assert.equal(vals.length, 2);
+    assert.equal(JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(vals.find((v) => v.key === "games.t7.state")!.data!), (c) => c.charCodeAt(0)))).i, 7);
   });
 
   test("object store upload / list / read / download", async () => {

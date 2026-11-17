@@ -137,8 +137,12 @@ export async function listKeys(kv: KV, filter: string | undefined, max: number):
   return { keys, truncated };
 }
 
-export function entryToDTO(e: KvEntry, maxValueBytes = Infinity): KvEntryDTO {
+/** `headersOnly` entries carry no value: `data` stays undefined (= "not loaded"). */
+export function entryToDTO(e: KvEntry, maxValueBytes = Infinity, headersOnly = false): KvEntryDTO {
   const big = e.value.length > maxValueBytes;
+  if (headersOnly) {
+    return { key: e.key, revision: e.revision, created: e.created.toISOString(), operation: e.operation, size: e.length ?? 0, delta: e.delta };
+  }
   return {
     key: e.key,
     revision: e.revision,
@@ -185,6 +189,8 @@ export async function snapshotAndWatch(
     max: number;
     maxValueBytes: number;
     live: boolean;
+    /** Load metadata only (key, revision, size, time); values are fetched on demand. */
+    headersOnly?: boolean;
     onInitial: (entries: KvEntryDTO[], truncated: boolean) => void;
     onUpdate?: (entry: KvEntryDTO) => void;
     onError?: (err: Error) => void;
@@ -200,12 +206,12 @@ export async function snapshotAndWatch(
   const buffer: KvEntryDTO[] = [];
   if (opts.live) {
     try {
-      watcher = await kv.watch({ key, include: KvWatchInclude.UpdatesOnly });
+      watcher = await kv.watch({ key, include: KvWatchInclude.UpdatesOnly, headers_only: opts.headersOnly });
       const w = watcher;
       void (async () => {
         try {
           for await (const e of w) {
-            const dto = entryToDTO(e, opts.maxValueBytes);
+            const dto = entryToDTO(e, opts.maxValueBytes, opts.headersOnly);
             if (delivered) opts.onUpdate?.(dto);
             else buffer.push(dto);
           }
@@ -219,12 +225,12 @@ export async function snapshotAndWatch(
   }
   let pulled: { entries: KvEntry[]; truncated: boolean } | undefined;
   try {
-    pulled = await pullLatest(kv, opts.filter, opts.max, false);
+    pulled = await pullLatest(kv, opts.filter, opts.max, Boolean(opts.headersOnly));
   } catch {
     pulled = undefined;
   }
   if (pulled) {
-    const snapshot = pulled.entries.map((e) => entryToDTO(e, opts.maxValueBytes));
+    const snapshot = pulled.entries.map((e) => entryToDTO(e, opts.maxValueBytes, opts.headersOnly));
     opts.onInitial(snapshot, pulled.truncated);
     const seen = new Map(snapshot.map((e) => [e.key, e.revision]));
     delivered = true;
@@ -239,7 +245,7 @@ export async function snapshotAndWatch(
   watcher?.stop();
 
   const status = await kv.status();
-  const it = await kv.watch({ key: opts.filter?.trim() || ">", include: KvWatchInclude.LastValue });
+  const it = await kv.watch({ key: opts.filter?.trim() || ">", include: KvWatchInclude.LastValue, headers_only: opts.headersOnly });
   const snapshot = new Map<string, KvEntryDTO>();
   let initialDone = false;
   let truncated = false;
@@ -259,7 +265,7 @@ export async function snapshotAndWatch(
       for await (const e of it) {
         if (!initialDone) {
           if (e.operation === "PUT") {
-            if (snapshot.size < opts.max) snapshot.set(e.key, entryToDTO(e, opts.maxValueBytes));
+            if (snapshot.size < opts.max) snapshot.set(e.key, entryToDTO(e, opts.maxValueBytes, opts.headersOnly));
             else truncated = true;
           } else {
             snapshot.delete(e.key);
@@ -267,7 +273,7 @@ export async function snapshotAndWatch(
           if ((e.delta ?? 0) === 0) finishInitial();
           continue;
         }
-        opts.onUpdate?.(entryToDTO(e, opts.maxValueBytes));
+        opts.onUpdate?.(entryToDTO(e, opts.maxValueBytes, opts.headersOnly));
       }
       if (!initialDone) finishInitial();
     } catch (err) {
@@ -280,4 +286,23 @@ export async function snapshotAndWatch(
       it.stop();
     },
   };
+}
+
+/** Fetch current values for specific keys (direct gets, limited concurrency). */
+export async function getValues(kv: KV, keys: string[], maxValueBytes: number, concurrency = 16): Promise<KvEntryDTO[]> {
+  const out: KvEntryDTO[] = [];
+  let i = 0;
+  const worker = async () => {
+    while (i < keys.length) {
+      const k = keys[i++];
+      try {
+        const e = await kv.get(k);
+        if (e && e.operation === "PUT") out.push(entryToDTO(e, maxValueBytes));
+      } catch {
+        /* deleted meanwhile / transient: skip */
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(concurrency, keys.length) }, worker));
+  return out;
 }
