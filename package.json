@@ -2,7 +2,7 @@
   "name": "nats-admin",
   "displayName": "NATS Admin — JetStream, KV & Dashboards",
   "description": "Operate NATS from VS Code: auto-discovered contexts, production-safe connections, fleet/server/stream/cluster dashboards, health checks, topology graph, Key-Value data-structure browser, message browser, live tail, consumer lab and JetStream config as code.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": "grok-rs",
   "license": "MIT",
   "private": true,
@@ -621,6 +621,12 @@
         "title": "Select Target Connection for Config Folder",
         "category": "NATS",
         "icon": "$(plug)"
+      },
+      {
+        "command": "nats.showExplorer",
+        "title": "Show NATS Explorer",
+        "category": "NATS",
+        "icon": "$(list-tree)"
       }
     ],
     "menus": {
@@ -1666,7 +1672,7 @@
           {
             "id": "connect",
             "title": "Connect to NATS",
-            "description": "Contexts, NATS_URL, workspace connections and local servers are picked up automatically.\n[Open the NATS view](command:nats.explorer.focus)\n[Add Connection](command:nats.addConnection)",
+            "description": "Contexts, NATS_URL, workspace connections and local servers are picked up automatically.\n[Open the NATS view](command:nats.showExplorer)\n[Add Connection](command:nats.addConnection)",
             "media": {
               "markdown": "media/walkthrough/connect.md"
             },

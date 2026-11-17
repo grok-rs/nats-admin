@@ -1343,3 +1343,52 @@ body.vscode-high-contrast-light ::-webkit-scrollbar-thumb {
   border: 2px solid transparent;
   outline: 1px solid var(--vscode-contrastBorder, transparent);
 }
+
+/* ---- resizable table columns (see webview/lib/resizableColumns.ts) ---- */
+.table th {
+  position: sticky; /* already sticky; also the containing block for the handle */
+}
+
+.col-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  bottom: 0;
+  width: 8px;
+  z-index: 2;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.col-resize-handle::after {
+  content: "";
+  position: absolute;
+  top: 20%;
+  bottom: 20%;
+  left: 3px;
+  width: 1px;
+  background: var(--border);
+}
+
+.col-resize-handle:hover::after,
+.col-resize-handle:focus-visible::after,
+body.col-resizing .col-resize-handle:active::after {
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 2px;
+  background: var(--vscode-sash-hoverBorder, var(--vscode-focusBorder));
+}
+
+body.col-resizing,
+body.col-resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+/* With a fixed layout, long cell content must not push columns wider. */
+table[data-cols-frozen="1"] td,
+table[data-cols-frozen="1"] th {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

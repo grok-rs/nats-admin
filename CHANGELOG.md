@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1
+
+- Fix "command 'nats.explorer.focus' not found" from the Getting Started walkthrough and Overview actions: a new `NATS: Show NATS Explorer` command opens the view container reliably.
+- Resizable table columns in every panel: drag a column edge (or focus it and use ←/→), double-click to reset; widths are remembered per table.
+
 ## 0.2.0
 
 ### Connections & safety

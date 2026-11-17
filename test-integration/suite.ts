@@ -256,6 +256,11 @@ export async function run(): Promise<void> {
     assert.match(text, /score/i);
   });
 
+  await test("Show NATS Explorer command opens the view (walkthrough link)", async () => {
+    await vscode.commands.executeCommand("nats.showExplorer");
+    assert.equal(api.explorer.view?.visible, true, "Connections view is visible");
+  });
+
   await test("Overview sidebar view resolves", async () => {
     await vscode.commands.executeCommand("nats.overview.focus");
     await until(() => api.testing.rpcLog.some((l) => /^nats\.overview /.test(l) || /overview/.test(l)), "overview webview RPC", 8000);

@@ -29,7 +29,7 @@ export async function runCommand(s: Services, command: unknown, profileId?: unkn
 
 /** Focus the Connections view and select (and expand) the connection's node. */
 export async function revealInExplorer(s: Services, profileId: string): Promise<void> {
-  await vscode.commands.executeCommand("nats.explorer.focus");
+  await vscode.commands.executeCommand("nats.showExplorer");
   let node = s.explorer.connectionNode(profileId);
   if (!node) {
     // The tree may not have been rendered yet: wait for the first getChildren.

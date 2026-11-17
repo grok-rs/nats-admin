@@ -1,6 +1,7 @@
 // Webview side of the RPC bridge (see src/panels/webviewHost.ts).
 
 import type { HostMessage } from "../../src/shared/dto";
+import { installResizableColumns } from "./resizableColumns";
 
 interface VsCodeApi {
   postMessage(msg: unknown): void;
@@ -16,6 +17,7 @@ declare global {
 }
 
 const api = acquireVsCodeApi();
+installResizableColumns();
 let nextId = 1;
 const pending = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
 const listeners = new Map<string, Set<(data: any) => void>>();

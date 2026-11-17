@@ -114,6 +114,17 @@ export function registerConnectionCommands(s: Services): void {
     s.manager.setActive(id);
   });
 
+  // Opens the NATS view container and focuses Connections. Uses the container
+  // command first: view ".focus" commands only exist once the view registered.
+  reg("nats.showExplorer", async () => {
+    await vscode.commands.executeCommand("workbench.view.extension.nats");
+    try {
+      await vscode.commands.executeCommand("nats.explorer.focus");
+    } catch {
+      /* container is open; focusing the view is best effort */
+    }
+  });
+
   reg("nats.refresh", () => s.explorer.refresh());
   reg("nats.refreshNode", (node?: NatsNode) => s.explorer.refresh(node));
 
