@@ -1,0 +1,701 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "JetStream stream configuration",
+  "markdownDescription": "A JetStream **StreamConfig** — the same JSON as `nats stream add --config <file>` and `nats stream info --json | jq .config`.\n\nFile name: `<STREAM>.stream.json`. Use **Plan & Apply Config Folder** or the CodeLens above to compare with and apply to a connection.\n\nFields you omit keep their server value (or the server default when the stream is created). Durations are **nanoseconds**.",
+  "type": "object",
+  "definitions": {
+    "source": {
+      "type": "object",
+      "markdownDescription": "A stream to replicate from (mirror or source).",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "markdownDescription": "Name of the origin stream (in this account / domain, or remote with `external` / `domain`)."
+        },
+        "opt_start_seq": {
+          "type": "integer",
+          "minimum": 0,
+          "markdownDescription": "Start replicating at this stream sequence of the origin."
+        },
+        "opt_start_time": {
+          "type": "string",
+          "markdownDescription": "Start replicating with messages stored at or after this time (RFC 3339, e.g. `2026-01-01T00:00:00Z`).",
+          "format": "date-time"
+        },
+        "filter_subject": {
+          "type": "string",
+          "markdownDescription": "Only replicate messages whose subject matches this filter (wildcards allowed). Use `subject_transforms` for several filters."
+        },
+        "external": {
+          "type": "object",
+          "markdownDescription": "Origin stream in another account or JetStream domain, reached through an imported API prefix. Mutually exclusive with `domain`.",
+          "required": [
+            "api"
+          ],
+          "properties": {
+            "api": {
+              "type": "string",
+              "markdownDescription": "JetStream API prefix of the remote stream, e.g. `$JS.hub.API` for domain `hub`."
+            },
+            "deliver": {
+              "type": "string",
+              "markdownDescription": "Delivery subject prefix used for the replication consumer (when the remote account exports a deliver subject)."
+            }
+          }
+        },
+        "domain": {
+          "type": "string",
+          "markdownDescription": "Convenience for `external`: the JetStream domain of the origin stream. The client converts it to `external.api = $JS.<domain>.API`; it is never sent to the server. Mutually exclusive with `external`."
+        },
+        "subject_transforms": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "markdownDescription": "Subject mapping applied to messages as they are stored (server 2.10+). Uses the same mapping syntax as account subject mappings, e.g. `{{wildcard(1)}}`, `{{partition(3,1)}}`.",
+            "required": [
+              "dest"
+            ],
+            "properties": {
+              "src": {
+                "type": "string",
+                "markdownDescription": "Source subject filter the transform applies to (wildcards allowed). Empty = all subjects of the stream / source."
+              },
+              "dest": {
+                "type": "string",
+                "markdownDescription": "Destination subject pattern, e.g. `orders.{{wildcard(1)}}.v2`."
+              }
+            }
+          },
+          "markdownDescription": "Subject transforms applied to replicated messages (server 2.10+). Each entry may also act as a filter (`src`)."
+        },
+        "consumer": {
+          "type": "object",
+          "markdownDescription": "Use a pre-created durable consumer on the origin for sourcing / mirroring instead of an ephemeral ordered consumer (server 2.14+, ADR-60). The consumer must exist first and use `ack_policy: \"flow_control\"`.",
+          "required": [
+            "name",
+            "deliver_subject"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "markdownDescription": "Name of the pre-created durable consumer on the origin stream."
+            },
+            "deliver_subject": {
+              "type": "string",
+              "markdownDescription": "Must equal the `deliver_subject` of that consumer."
+            }
+          }
+        }
+      }
+    },
+    "subjectTransform": {
+      "type": "object",
+      "markdownDescription": "Subject mapping applied to messages as they are stored (server 2.10+). Uses the same mapping syntax as account subject mappings, e.g. `{{wildcard(1)}}`, `{{partition(3,1)}}`.",
+      "required": [
+        "dest"
+      ],
+      "properties": {
+        "src": {
+          "type": "string",
+          "markdownDescription": "Source subject filter the transform applies to (wildcards allowed). Empty = all subjects of the stream / source."
+        },
+        "dest": {
+          "type": "string",
+          "markdownDescription": "Destination subject pattern, e.g. `orders.{{wildcard(1)}}.v2`."
+        }
+      }
+    }
+  },
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "markdownDescription": "Optional JSON schema reference (ignored when applying)."
+    },
+    "name": {
+      "type": "string",
+      "markdownDescription": "Stream name. **Must match the file name** (`<name>.stream.json`). Cannot contain whitespace, `.`, `*`, `>`, `/` or `\\`.\n\nRenaming means creating a new stream.",
+      "pattern": "^[^.*>\\s/\\\\]+$",
+      "maxLength": 255,
+      "errorMessage": "Stream names cannot contain whitespace, '.', '*', '>', '/' or '\\'"
+    },
+    "description": {
+      "type": "string",
+      "markdownDescription": "Short human description of the stream's purpose."
+    },
+    "subjects": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true,
+      "markdownDescription": "Subjects the stream captures. Wildcards: `*` matches one token, `>` the rest (e.g. `orders.>`).\n\nMust be empty for a mirror; may be empty when `sources` are set. Can be changed on an existing stream — removing a subject stops capturing it (stored messages stay). Plans compare subjects as a set (order is ignored).",
+      "defaultSnippets": [
+        {
+          "label": "prefix.>",
+          "body": [
+            "${1:orders}.>"
+          ]
+        }
+      ]
+    },
+    "retention": {
+      "type": "string",
+      "enum": [
+        "limits",
+        "interest",
+        "workqueue"
+      ],
+      "markdownEnumDescriptions": [
+        "Keep messages until a limit (`max_msgs`, `max_bytes`, `max_age`, per-subject limits) is reached, then apply the `discard` policy. **Default.**",
+        "Keep a message while at least one consumer has not yet acknowledged it; messages without interest are removed.",
+        "Each message is consumed once: removed as soon as one consumer acknowledges it. Consumers must not overlap."
+      ],
+      "default": "limits",
+      "markdownDescription": "How messages are retained.\n\nAn existing stream can switch between `limits` and `interest`, but ⛔ **not to or from `workqueue`**."
+    },
+    "max_consumers": {
+      "type": "integer",
+      "minimum": -1,
+      "default": -1,
+      "markdownDescription": "Maximum number of consumers this stream allows. `-1` = unlimited (`0` is treated as unlimited).",
+      "defaultSnippets": [
+        {
+          "label": "unlimited (-1)",
+          "body": -1
+        }
+      ]
+    },
+    "max_msgs": {
+      "type": "integer",
+      "minimum": -1,
+      "default": -1,
+      "markdownDescription": "Maximum number of messages kept. `-1` = unlimited. When exceeded, the `discard` policy applies.\n\n⚠ Lowering it on an existing stream deletes the oldest messages (discard `old`).",
+      "defaultSnippets": [
+        {
+          "label": "unlimited (-1)",
+          "body": -1
+        }
+      ]
+    },
+    "max_bytes": {
+      "type": "integer",
+      "minimum": -1,
+      "default": -1,
+      "markdownDescription": "Maximum total size of the stream. `-1` = unlimited. Some accounts require a value (`max_bytes_required`).\n\n⚠ Lowering it on an existing stream deletes the oldest messages (discard `old`).\n\n**Unit: bytes.** `1048576` = 1 MiB · `1073741824` = 1 GiB.",
+      "defaultSnippets": [
+        {
+          "label": "unlimited (-1)",
+          "body": -1
+        },
+        {
+          "label": "1 MiB",
+          "body": 1048576
+        },
+        {
+          "label": "64 MiB",
+          "body": 67108864
+        },
+        {
+          "label": "1 GiB",
+          "body": 1073741824
+        },
+        {
+          "label": "10 GiB",
+          "body": 10737418240
+        }
+      ]
+    },
+    "max_age": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "markdownDescription": "Maximum age of a message. `0` = keep forever.\n\n⚠ Lowering it on an existing stream deletes older messages immediately.\n\n**Unit: nanoseconds** (JetStream API). `1000000000` = 1 s · `60000000000` = 1 min · `3600000000000` = 1 h · `86400000000000` = 24 h.",
+      "examples": [
+        60000000000,
+        3600000000000,
+        86400000000000
+      ],
+      "defaultSnippets": [
+        {
+          "label": "forever (0)",
+          "body": 0
+        },
+        {
+          "label": "30 seconds",
+          "body": 30000000000
+        },
+        {
+          "label": "1 minute",
+          "body": 60000000000
+        },
+        {
+          "label": "5 minutes",
+          "body": 300000000000
+        },
+        {
+          "label": "1 hour",
+          "body": 3600000000000
+        },
+        {
+          "label": "24 hours",
+          "body": 86400000000000
+        },
+        {
+          "label": "7 days",
+          "body": 604800000000000
+        },
+        {
+          "label": "30 days",
+          "body": 2592000000000000
+        }
+      ]
+    },
+    "max_msgs_per_subject": {
+      "type": "integer",
+      "minimum": -1,
+      "default": -1,
+      "markdownDescription": "Messages kept **per subject** (useful for last-value semantics, like KV history). `-1` = unlimited.",
+      "defaultSnippets": [
+        {
+          "label": "unlimited (-1)",
+          "body": -1
+        }
+      ]
+    },
+    "max_msg_size": {
+      "type": "integer",
+      "minimum": -1,
+      "default": -1,
+      "markdownDescription": "Largest message accepted (payload + headers). `-1` = unlimited (bounded by the server's `max_payload`).\n\n**Unit: bytes.** `1048576` = 1 MiB · `1073741824` = 1 GiB.",
+      "defaultSnippets": [
+        {
+          "label": "unlimited (-1)",
+          "body": -1
+        },
+        {
+          "label": "1 MiB",
+          "body": 1048576
+        },
+        {
+          "label": "64 MiB",
+          "body": 67108864
+        },
+        {
+          "label": "1 GiB",
+          "body": 1073741824
+        },
+        {
+          "label": "10 GiB",
+          "body": 10737418240
+        }
+      ]
+    },
+    "storage": {
+      "type": "string",
+      "enum": [
+        "file",
+        "memory"
+      ],
+      "markdownEnumDescriptions": [
+        "Persist messages on disk. **Default.**",
+        "Keep messages in memory only — lost when the server restarts (replicas excepted)."
+      ],
+      "default": "file",
+      "markdownDescription": "Storage backend.\n\n⛔ **Immutable** — cannot be changed on an existing stream; the plan flags the change and apply is blocked. Recreate the stream instead."
+    },
+    "discard": {
+      "type": "string",
+      "enum": [
+        "old",
+        "new"
+      ],
+      "markdownEnumDescriptions": [
+        "Delete the oldest messages to make room. **Default.**",
+        "Reject new publishes with an error (the publisher sees a failed PubAck)."
+      ],
+      "default": "old",
+      "markdownDescription": "What happens when a limit is reached."
+    },
+    "discard_new_per_subject": {
+      "type": "boolean",
+      "default": false,
+      "markdownDescription": "With `discard: \"new\"` and `max_msgs_per_subject`, reject new messages per subject instead of for the whole stream."
+    },
+    "num_replicas": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "default": 1,
+      "markdownDescription": "Number of replicas (1, 3 or 5 in practice). Requires a clustered JetStream for values > 1. Can be changed on an existing stream (the cluster re-replicates)."
+    },
+    "no_ack": {
+      "type": "boolean",
+      "default": false,
+      "markdownDescription": "Do not send a PubAck for messages stored by this stream (fire-and-forget publishing; only for core NATS publishers that don't wait for acks)."
+    },
+    "duplicate_window": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 120000000000,
+      "markdownDescription": "Window for duplicate detection with the `Nats-Msg-Id` header. `0` = server default (2 minutes, or `max_age` when that is shorter).\n\nMust not be larger than a non-zero `max_age`. When a file lowers `max_age` below the current window and does not set `duplicate_window`, Apply lowers the window to `max_age` (the server rejects the update otherwise).\n\n**Unit: nanoseconds** (JetStream API). `1000000000` = 1 s · `60000000000` = 1 min · `3600000000000` = 1 h · `86400000000000` = 24 h.",
+      "examples": [
+        60000000000,
+        3600000000000,
+        86400000000000
+      ],
+      "defaultSnippets": [
+        {
+          "label": "30 seconds",
+          "body": 30000000000
+        },
+        {
+          "label": "1 minute",
+          "body": 60000000000
+        },
+        {
+          "label": "5 minutes",
+          "body": 300000000000
+        },
+        {
+          "label": "1 hour",
+          "body": 3600000000000
+        },
+        {
+          "label": "24 hours",
+          "body": 86400000000000
+        },
+        {
+          "label": "7 days",
+          "body": 604800000000000
+        },
+        {
+          "label": "30 days",
+          "body": 2592000000000000
+        }
+      ]
+    },
+    "placement": {
+      "type": "object",
+      "markdownDescription": "Placement directives for the stream's replicas (clustered JetStream). Random placement when unset.",
+      "properties": {
+        "cluster": {
+          "type": "string",
+          "markdownDescription": "Cluster to place the stream in."
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "Server tags the replicas must match (`server_tags` in the server config), e.g. `[\"az:eu-1\"]`."
+        }
+      }
+    },
+    "mirror": {
+      "$ref": "#/definitions/source",
+      "markdownDescription": "Make this stream a 1:1 **mirror** of another stream. A mirror has no `subjects` and no `sources`.\n\n⛔ **Immutable** — cannot be changed on an existing stream; the plan flags the change and apply is blocked. Recreate the stream instead."
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/source"
+      },
+      "markdownDescription": "Streams whose messages are replicated into this stream (aggregation). Can be changed on an existing stream."
+    },
+    "sealed": {
+      "type": "boolean",
+      "default": false,
+      "markdownDescription": "Seal the stream: no more messages, deletes or purges; limits stop applying.\n\nThe server only accepts this through an update — when Apply creates a stream with `sealed: true` it creates it first, then seals it.\n\n⚠ **One-way** — can be turned on with an update but never turned off again."
+    },
+    "deny_delete": {
+      "type": "boolean",
+      "default": false,
+      "markdownDescription": "Forbid deleting individual messages through the API.\n\n⚠ **One-way** — can be turned on with an update but never turned off again."
+    },
+    "deny_purge": {
+      "type": "boolean",
+      "default": false,
+      "markdownDescription": "Forbid purging the stream through the API.\n\n⚠ **One-way** — can be turned on with an update but never turned off again."
+    },
+    "allow_rollup_hdrs": {
+      "type": "boolean",
+      "default": false,
+      "markdownDescription": "Allow the `Nats-Rollup` header to replace the stream's (or a subject's) contents with a single message. Requires purge permission."
+    },
+    "allow_direct": {
+      "type": "boolean",
+      "default": false,
+      "markdownDescription": "Allow direct get (`$JS.API.DIRECT.GET`): faster reads served by any replica, possibly slightly stale. KV buckets enable it by default."
+    },
+    "mirror_direct": {
+      "type": "boolean",
+      "default": false,
+      "markdownDescription": "For mirrors: also answer direct gets for the origin stream's subjects."
+    },
+    "republish": {
+      "type": "object",
+      "markdownDescription": "Republish every stored message to a core NATS subject (cheap fan-out, KV watchers).",
+      "required": [
+        "dest"
+      ],
+      "properties": {
+        "src": {
+          "type": "string",
+          "markdownDescription": "Subject filter of the messages to republish (wildcards allowed). Default: all."
+        },
+        "dest": {
+          "type": "string",
+          "markdownDescription": "Destination subject pattern, e.g. `repub.{{wildcard(1)}}`."
+        },
+        "headers_only": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Republish headers only (no payload); a `Nats-Msg-Size` header carries the payload size."
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "markdownDescription": "Free-form string metadata stored with the stream (server 2.10+), e.g. owner, team, ticket.\n\nKeys starting with `_nats` are reserved: the server adds `_nats.ver`, `_nats.level` … itself and plans ignore them.",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "propertyNames": {
+        "not": {
+          "pattern": "^_nats"
+        },
+        "errorMessage": "Keys starting with _nats are reserved for the server"
+      },
+      "defaultSnippets": [
+        {
+          "label": "owner / team",
+          "body": {
+            "owner": "${1:team-name}",
+            "ticket": "${2}"
+          }
+        }
+      ]
+    },
+    "subject_transform": {
+      "$ref": "#/definitions/subjectTransform",
+      "markdownDescription": "Transform the subject of incoming messages before they are stored (server 2.10+)."
+    },
+    "compression": {
+      "type": "string",
+      "enum": [
+        "none",
+        "s2"
+      ],
+      "markdownEnumDescriptions": [
+        "No compression. **Default.**",
+        "S2 (Snappy-compatible) compression: smaller files, a little more CPU."
+      ],
+      "default": "none",
+      "markdownDescription": "On-disk compression for file storage (server 2.10+). Can be changed on an existing stream (applies to new blocks)."
+    },
+    "consumer_limits": {
+      "type": "object",
+      "markdownDescription": "Defaults (and upper bounds) for consumers that don't set these themselves (server 2.10+).",
+      "properties": {
+        "inactive_threshold": {
+          "type": "integer",
+          "minimum": 0,
+          "markdownDescription": "Default `inactive_threshold` for consumers of this stream.\n\n**Unit: nanoseconds** (JetStream API). `1000000000` = 1 s · `60000000000` = 1 min · `3600000000000` = 1 h · `86400000000000` = 24 h.",
+          "examples": [
+            60000000000,
+            3600000000000,
+            86400000000000
+          ],
+          "defaultSnippets": [
+            {
+              "label": "30 seconds",
+              "body": 30000000000
+            },
+            {
+              "label": "1 minute",
+              "body": 60000000000
+            },
+            {
+              "label": "5 minutes",
+              "body": 300000000000
+            },
+            {
+              "label": "1 hour",
+              "body": 3600000000000
+            },
+            {
+              "label": "24 hours",
+              "body": 86400000000000
+            },
+            {
+              "label": "7 days",
+              "body": 604800000000000
+            },
+            {
+              "label": "30 days",
+              "body": 2592000000000000
+            }
+          ]
+        },
+        "max_ack_pending": {
+          "type": "integer",
+          "minimum": -1,
+          "markdownDescription": "Default (and maximum) `max_ack_pending` for consumers of this stream."
+        }
+      }
+    },
+    "first_seq": {
+      "type": "integer",
+      "minimum": 0,
+      "markdownDescription": "First sequence number used by a new stream (e.g. to continue numbering after a migration). Not for mirrors / sources."
+    },
+    "subject_delete_marker_ttl": {
+      "type": "integer",
+      "minimum": 0,
+      "markdownDescription": "When a message is removed by `max_age` (or a purge / delete), leave a delete marker with this TTL so watchers see the removal (server 2.11+). Requires `allow_msg_ttl`.\n\n**Unit: nanoseconds** (JetStream API). `1000000000` = 1 s · `60000000000` = 1 min · `3600000000000` = 1 h · `86400000000000` = 24 h.",
+      "examples": [
+        60000000000,
+        3600000000000,
+        86400000000000
+      ],
+      "defaultSnippets": [
+        {
+          "label": "30 seconds",
+          "body": 30000000000
+        },
+        {
+          "label": "1 minute",
+          "body": 60000000000
+        },
+        {
+          "label": "5 minutes",
+          "body": 300000000000
+        },
+        {
+          "label": "1 hour",
+          "body": 3600000000000
+        },
+        {
+          "label": "24 hours",
+          "body": 86400000000000
+        },
+        {
+          "label": "7 days",
+          "body": 604800000000000
+        },
+        {
+          "label": "30 days",
+          "body": 2592000000000000
+        }
+      ]
+    },
+    "allow_msg_ttl": {
+      "type": "boolean",
+      "default": false,
+      "markdownDescription": "Honour the per-message `Nats-TTL` header (server 2.11+).\n\n⚠ **One-way** — can be turned on with an update but never turned off again."
+    },
+    "allow_msg_counter": {
+      "type": "boolean",
+      "default": false,
+      "markdownDescription": "Turn the stream into a distributed counter (CRDT increments via the `Nats-Incr` header, server 2.12+).\n\n⛔ **Immutable** — cannot be changed on an existing stream; the plan flags the change and apply is blocked. Recreate the stream instead."
+    },
+    "allow_msg_schedules": {
+      "type": "boolean",
+      "default": false,
+      "markdownDescription": "Allow scheduled / delayed messages (`Nats-Schedule` headers, server 2.12+). Cannot be combined with `discard: \"new\"`.\n\n⚠ **One-way** — can be turned on with an update but never turned off again."
+    },
+    "allow_atomic": {
+      "type": "boolean",
+      "default": false,
+      "markdownDescription": "Allow atomic batch publishes: all messages of a batch are stored or none (server 2.12+)."
+    },
+    "allow_batched": {
+      "type": "boolean",
+      "default": false,
+      "markdownDescription": "Allow (non-atomic) batched publishing with a single acknowledgement per batch (server 2.14+)."
+    },
+    "persist_mode": {
+      "type": "string",
+      "enum": [
+        "default",
+        "async"
+      ],
+      "markdownEnumDescriptions": [
+        "Sync to disk before sending the PubAck. **Default**, strongest durability.",
+        "Send the PubAck before the disk sync completes: much higher throughput, small window of loss if a server crashes (mitigated by replicas)."
+      ],
+      "default": "default",
+      "markdownDescription": "Disk sync model (server 2.12+).\n\n⛔ **Immutable** — cannot be changed on an existing stream; the plan flags the change and apply is blocked. Recreate the stream instead."
+    }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "required": [
+          "mirror"
+        ]
+      },
+      "then": {
+        "properties": {
+          "subjects": {
+            "maxItems": 0,
+            "errorMessage": "A mirror stream cannot have subjects"
+          },
+          "sources": {
+            "maxItems": 0,
+            "errorMessage": "A mirror stream cannot have sources"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "discard_new_per_subject": {
+            "const": true
+          }
+        },
+        "required": [
+          "discard_new_per_subject"
+        ]
+      },
+      "then": {
+        "properties": {
+          "discard": {
+            "const": "new",
+            "errorMessage": "discard_new_per_subject requires discard \"new\""
+          }
+        },
+        "required": [
+          "discard"
+        ]
+      }
+    }
+  ],
+  "defaultSnippets": [
+    {
+      "label": "New stream",
+      "description": "Limits-based file stream",
+      "body": {
+        "name": "${1:ORDERS}",
+        "description": "${2}",
+        "subjects": [
+          "${3:orders.>}"
+        ],
+        "retention": "limits",
+        "storage": "file",
+        "num_replicas": 1,
+        "max_age": 0,
+        "max_bytes": -1,
+        "max_msgs": -1,
+        "discard": "old",
+        "duplicate_window": 120000000000
+      }
+    }
+  ]
+}

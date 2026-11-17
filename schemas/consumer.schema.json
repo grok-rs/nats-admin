@@ -1,0 +1,578 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "JetStream consumer configuration",
+  "markdownDescription": "A durable JetStream **ConsumerConfig** — the same JSON as `nats consumer add <stream> --config <file>`.\n\nFile name: `<STREAM>.<CONSUMER>.consumer.json`; the stream comes from the file name (stream and consumer names cannot contain dots).\n\nFields you omit keep their server value (or the server default when the consumer is created). Durations are **nanoseconds**.",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "markdownDescription": "Optional JSON schema reference (ignored when applying)."
+    },
+    "durable_name": {
+      "type": "string",
+      "markdownDescription": "Durable name. **Must match the file name** (`<STREAM>.<durable_name>.consumer.json`); when omitted the file name is used. Durable consumers survive without subscribers.",
+      "pattern": "^[^.*>\\s/\\\\]+$",
+      "errorMessage": "Consumer names cannot contain whitespace, '.', '*', '>', '/' or '\\'"
+    },
+    "name": {
+      "type": "string",
+      "markdownDescription": "Consumer name (the server sets it to `durable_name` for durables). If present it must match the file name.",
+      "pattern": "^[^.*>\\s/\\\\]+$"
+    },
+    "description": {
+      "type": "string",
+      "markdownDescription": "Short human description of the consumer's purpose."
+    },
+    "deliver_policy": {
+      "type": "string",
+      "enum": [
+        "all",
+        "last",
+        "new",
+        "by_start_sequence",
+        "by_start_time",
+        "last_per_subject"
+      ],
+      "markdownEnumDescriptions": [
+        "From the first message in the stream. **Default.**",
+        "From the last message in the stream.",
+        "Only messages stored after the consumer is created.",
+        "From `opt_start_seq`.",
+        "From the first message at or after `opt_start_time`.",
+        "The last message of every subject (matching the filter), then new ones."
+      ],
+      "default": "all",
+      "markdownDescription": "Where in the stream the consumer starts.\n\n⛔ **Immutable** — cannot be changed on an existing consumer; the plan flags the change and apply is blocked. Recreate the consumer instead."
+    },
+    "opt_start_seq": {
+      "type": "integer",
+      "minimum": 1,
+      "markdownDescription": "Start sequence for `deliver_policy: \"by_start_sequence\"`.\n\n⛔ **Immutable** — cannot be changed on an existing consumer; the plan flags the change and apply is blocked. Recreate the consumer instead."
+    },
+    "opt_start_time": {
+      "type": "string",
+      "markdownDescription": "Start time (RFC 3339, e.g. `2026-01-01T00:00:00Z`) for `deliver_policy: \"by_start_time\"`.\n\n⛔ **Immutable** — cannot be changed on an existing consumer; the plan flags the change and apply is blocked. Recreate the consumer instead.",
+      "format": "date-time"
+    },
+    "ack_policy": {
+      "type": "string",
+      "enum": [
+        "explicit",
+        "all",
+        "none",
+        "flow_control"
+      ],
+      "markdownEnumDescriptions": [
+        "Every message must be acknowledged individually. **Default** (and required for pull consumers).",
+        "Acknowledging a message also acknowledges every earlier one.",
+        "No acknowledgements: delivery is fire-and-forget.",
+        "Acknowledged through flow-control replies; for durable mirror / source consumers (server 2.14+, ADR-60)."
+      ],
+      "default": "explicit",
+      "markdownDescription": "How messages are acknowledged.\n\n⛔ **Immutable** — cannot be changed on an existing consumer; the plan flags the change and apply is blocked. Recreate the consumer instead."
+    },
+    "ack_wait": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 30000000000,
+      "markdownDescription": "How long the server waits for an acknowledgement before redelivering. `0` = server default (30 s).\n\nIgnored while `backoff` is set: the server then uses the first backoff step as the ack wait (and plans do not compare this field).\n\n**Unit: nanoseconds** (JetStream API). `1000000000` = 1 s · `60000000000` = 1 min · `3600000000000` = 1 h · `86400000000000` = 24 h.",
+      "examples": [
+        60000000000,
+        3600000000000,
+        86400000000000
+      ],
+      "defaultSnippets": [
+        {
+          "label": "30 seconds",
+          "body": 30000000000
+        },
+        {
+          "label": "1 minute",
+          "body": 60000000000
+        },
+        {
+          "label": "5 minutes",
+          "body": 300000000000
+        },
+        {
+          "label": "1 hour",
+          "body": 3600000000000
+        },
+        {
+          "label": "24 hours",
+          "body": 86400000000000
+        },
+        {
+          "label": "7 days",
+          "body": 604800000000000
+        },
+        {
+          "label": "30 days",
+          "body": 2592000000000000
+        }
+      ]
+    },
+    "max_deliver": {
+      "type": "integer",
+      "minimum": -1,
+      "default": -1,
+      "markdownDescription": "Maximum delivery attempts per message. `-1` = unlimited. After the last attempt the server publishes a `MAX_DELIVERIES` advisory (see the Dead Letter Monitor).",
+      "defaultSnippets": [
+        {
+          "label": "unlimited (-1)",
+          "body": -1
+        }
+      ]
+    },
+    "backoff": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "markdownDescription": "Redelivery delays per attempt (the server sets `ack_wait` to the first step), e.g. `[1000000000, 5000000000, 30000000000]` = 1 s, 5 s, 30 s. Must have fewer entries than `max_deliver`.\n\n**Unit: nanoseconds** (JetStream API). `1000000000` = 1 s · `60000000000` = 1 min · `3600000000000` = 1 h · `86400000000000` = 24 h.",
+      "defaultSnippets": [
+        {
+          "label": "1s, 5s, 30s",
+          "body": [
+            1000000000,
+            5000000000,
+            30000000000
+          ]
+        }
+      ]
+    },
+    "filter_subject": {
+      "type": "string",
+      "markdownDescription": "Only deliver messages whose subject matches this filter (wildcards allowed). Mutually exclusive with `filter_subjects`. Can be changed on an existing consumer."
+    },
+    "filter_subjects": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true,
+      "markdownDescription": "Several subject filters (server 2.10+). Mutually exclusive with `filter_subject`. Plans compare them as a set."
+    },
+    "replay_policy": {
+      "type": "string",
+      "enum": [
+        "instant",
+        "original"
+      ],
+      "markdownEnumDescriptions": [
+        "As fast as the client can take them. **Default.**",
+        "At the original publish rate (replays timing)."
+      ],
+      "default": "instant",
+      "markdownDescription": "Delivery pacing.\n\n⛔ **Immutable** — cannot be changed on an existing consumer; the plan flags the change and apply is blocked. Recreate the consumer instead."
+    },
+    "rate_limit_bps": {
+      "type": "integer",
+      "minimum": 0,
+      "markdownDescription": "Throttle delivery to this many **bits per second** (push consumers only)."
+    },
+    "sample_freq": {
+      "type": "string",
+      "markdownDescription": "Percentage of acknowledgements sampled for `CONSUMER.ACK` latency advisories, e.g. `\"100%\"` or `\"30\"`.",
+      "pattern": "^\\d{1,3}%?$"
+    },
+    "max_waiting": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 512,
+      "markdownDescription": "Maximum outstanding pull requests (pull consumers). `0` = server default (512).\n\n⛔ **Immutable** — cannot be changed on an existing consumer; the plan flags the change and apply is blocked. Recreate the consumer instead."
+    },
+    "max_ack_pending": {
+      "type": "integer",
+      "minimum": -1,
+      "default": 1000,
+      "markdownDescription": "Maximum unacknowledged messages in flight; delivery pauses when reached. `-1` = unlimited, `0` = server default (1000)."
+    },
+    "headers_only": {
+      "type": "boolean",
+      "default": false,
+      "markdownDescription": "Deliver headers only (no payload); a `Nats-Msg-Size` header carries the payload size."
+    },
+    "deliver_subject": {
+      "type": "string",
+      "markdownDescription": "Makes this a **push** consumer that delivers to this subject. Omit for a pull consumer.\n\n⛔ A pull consumer cannot become a push consumer (or vice versa); changing between two push subjects is allowed."
+    },
+    "deliver_group": {
+      "type": "string",
+      "markdownDescription": "Queue group for push consumers: deliveries are load-balanced across subscribers of the group."
+    },
+    "flow_control": {
+      "type": "boolean",
+      "default": false,
+      "markdownDescription": "Push consumers: enable flow control (the client must answer status 100 messages). Requires `idle_heartbeat`.\n\n⛔ **Immutable** — cannot be changed on an existing consumer; the plan flags the change and apply is blocked. Recreate the consumer instead."
+    },
+    "idle_heartbeat": {
+      "type": "integer",
+      "minimum": 0,
+      "markdownDescription": "Push consumers: send an idle heartbeat (status 100) when nothing was delivered for this long.\n\n⛔ **Immutable** — cannot be changed on an existing consumer; the plan flags the change and apply is blocked. Recreate the consumer instead.\n\n**Unit: nanoseconds** (JetStream API). `1000000000` = 1 s · `60000000000` = 1 min · `3600000000000` = 1 h · `86400000000000` = 24 h.",
+      "examples": [
+        60000000000,
+        3600000000000,
+        86400000000000
+      ],
+      "defaultSnippets": [
+        {
+          "label": "30 seconds",
+          "body": 30000000000
+        },
+        {
+          "label": "1 minute",
+          "body": 60000000000
+        },
+        {
+          "label": "5 minutes",
+          "body": 300000000000
+        },
+        {
+          "label": "1 hour",
+          "body": 3600000000000
+        },
+        {
+          "label": "24 hours",
+          "body": 86400000000000
+        },
+        {
+          "label": "7 days",
+          "body": 604800000000000
+        },
+        {
+          "label": "30 days",
+          "body": 2592000000000000
+        }
+      ]
+    },
+    "max_batch": {
+      "type": "integer",
+      "minimum": 0,
+      "markdownDescription": "Pull consumers: largest batch a single pull request may ask for. `0` = unlimited."
+    },
+    "max_expires": {
+      "type": "integer",
+      "minimum": 0,
+      "markdownDescription": "Pull consumers: maximum `expires` of a pull request. `0` = unlimited.\n\n**Unit: nanoseconds** (JetStream API). `1000000000` = 1 s · `60000000000` = 1 min · `3600000000000` = 1 h · `86400000000000` = 24 h.",
+      "examples": [
+        60000000000,
+        3600000000000,
+        86400000000000
+      ],
+      "defaultSnippets": [
+        {
+          "label": "30 seconds",
+          "body": 30000000000
+        },
+        {
+          "label": "1 minute",
+          "body": 60000000000
+        },
+        {
+          "label": "5 minutes",
+          "body": 300000000000
+        },
+        {
+          "label": "1 hour",
+          "body": 3600000000000
+        },
+        {
+          "label": "24 hours",
+          "body": 86400000000000
+        },
+        {
+          "label": "7 days",
+          "body": 604800000000000
+        },
+        {
+          "label": "30 days",
+          "body": 2592000000000000
+        }
+      ]
+    },
+    "max_bytes": {
+      "type": "integer",
+      "minimum": 0,
+      "markdownDescription": "Pull consumers: largest `max_bytes` a single pull request may ask for. `0` = unlimited.\n\n**Unit: bytes.** `1048576` = 1 MiB · `1073741824` = 1 GiB.",
+      "defaultSnippets": [
+        {
+          "label": "1 MiB",
+          "body": 1048576
+        },
+        {
+          "label": "64 MiB",
+          "body": 67108864
+        },
+        {
+          "label": "1 GiB",
+          "body": 1073741824
+        },
+        {
+          "label": "10 GiB",
+          "body": 10737418240
+        }
+      ]
+    },
+    "inactive_threshold": {
+      "type": "integer",
+      "minimum": 0,
+      "markdownDescription": "Delete the consumer after it has been inactive (no subscribers / pulls) for this long. For durables `0` = never.\n\n**Unit: nanoseconds** (JetStream API). `1000000000` = 1 s · `60000000000` = 1 min · `3600000000000` = 1 h · `86400000000000` = 24 h.",
+      "examples": [
+        60000000000,
+        3600000000000,
+        86400000000000
+      ],
+      "defaultSnippets": [
+        {
+          "label": "30 seconds",
+          "body": 30000000000
+        },
+        {
+          "label": "1 minute",
+          "body": 60000000000
+        },
+        {
+          "label": "5 minutes",
+          "body": 300000000000
+        },
+        {
+          "label": "1 hour",
+          "body": 3600000000000
+        },
+        {
+          "label": "24 hours",
+          "body": 86400000000000
+        },
+        {
+          "label": "7 days",
+          "body": 604800000000000
+        },
+        {
+          "label": "30 days",
+          "body": 2592000000000000
+        }
+      ]
+    },
+    "num_replicas": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 5,
+      "default": 0,
+      "markdownDescription": "Replicas for the consumer state. `0` = inherit from the stream."
+    },
+    "mem_storage": {
+      "type": "boolean",
+      "default": false,
+      "markdownDescription": "Keep the consumer state in memory even on a file stream.\n\n⛔ **Immutable** — cannot be changed on an existing consumer; the plan flags the change and apply is blocked. Recreate the consumer instead."
+    },
+    "metadata": {
+      "type": "object",
+      "markdownDescription": "Free-form string metadata stored with the consumer (server 2.10+), e.g. owner, team, ticket.\n\nKeys starting with `_nats` are reserved: the server adds `_nats.ver`, `_nats.level` … itself and plans ignore them.",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "propertyNames": {
+        "not": {
+          "pattern": "^_nats"
+        },
+        "errorMessage": "Keys starting with _nats are reserved for the server"
+      },
+      "defaultSnippets": [
+        {
+          "label": "owner / team",
+          "body": {
+            "owner": "${1:team-name}",
+            "ticket": "${2}"
+          }
+        }
+      ]
+    },
+    "pause_until": {
+      "type": "string",
+      "markdownDescription": "Pause delivery until this time (RFC 3339, server 2.11+). Remove or set a past time to resume.",
+      "format": "date-time"
+    },
+    "priority_groups": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "maxItems": 1,
+      "markdownDescription": "Priority group names (server 2.11+, pull consumers). Clients must name a group when pulling. Required with `priority_policy`."
+    },
+    "priority_policy": {
+      "type": "string",
+      "enum": [
+        "none",
+        "overflow",
+        "pinned_client",
+        "prioritized"
+      ],
+      "markdownEnumDescriptions": [
+        "No priority handling. **Default.**",
+        "Clients only receive messages when the consumer is over `min_pending` / `min_ack_pending` (standby workers).",
+        "One client is pinned and receives all messages until it stops pulling for `priority_timeout`.",
+        "Clients pull with a priority; lower numbers are served first (server 2.12+)."
+      ],
+      "default": "none",
+      "markdownDescription": "How pulls in a priority group are served (server 2.11+)."
+    },
+    "priority_timeout": {
+      "type": "integer",
+      "minimum": 0,
+      "markdownDescription": "`pinned_client` policy: unpin a client after it has not pulled for this long.\n\n**Unit: nanoseconds** (JetStream API). `1000000000` = 1 s · `60000000000` = 1 min · `3600000000000` = 1 h · `86400000000000` = 24 h.",
+      "examples": [
+        60000000000,
+        3600000000000,
+        86400000000000
+      ],
+      "defaultSnippets": [
+        {
+          "label": "30 seconds",
+          "body": 30000000000
+        },
+        {
+          "label": "1 minute",
+          "body": 60000000000
+        },
+        {
+          "label": "5 minutes",
+          "body": 300000000000
+        },
+        {
+          "label": "1 hour",
+          "body": 3600000000000
+        },
+        {
+          "label": "24 hours",
+          "body": 86400000000000
+        },
+        {
+          "label": "7 days",
+          "body": 604800000000000
+        },
+        {
+          "label": "30 days",
+          "body": 2592000000000000
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "deliver_policy": {
+            "const": "by_start_sequence"
+          }
+        },
+        "required": [
+          "deliver_policy"
+        ]
+      },
+      "then": {
+        "required": [
+          "opt_start_seq"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "deliver_policy": {
+            "const": "by_start_time"
+          }
+        },
+        "required": [
+          "deliver_policy"
+        ]
+      },
+      "then": {
+        "required": [
+          "opt_start_time"
+        ]
+      }
+    },
+    {
+      "not": {
+        "required": [
+          "filter_subject",
+          "filter_subjects"
+        ]
+      },
+      "errorMessage": "Use either filter_subject or filter_subjects, not both"
+    },
+    {
+      "if": {
+        "required": [
+          "flow_control"
+        ],
+        "properties": {
+          "flow_control": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "idle_heartbeat",
+          "deliver_subject"
+        ]
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "priority_policy"
+        ],
+        "properties": {
+          "priority_policy": {
+            "enum": [
+              "overflow",
+              "pinned_client",
+              "prioritized"
+            ]
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "priority_groups"
+        ]
+      }
+    }
+  ],
+  "defaultSnippets": [
+    {
+      "label": "New pull consumer",
+      "description": "Durable pull consumer with explicit acks",
+      "body": {
+        "durable_name": "${1:worker}",
+        "description": "${2}",
+        "ack_policy": "explicit",
+        "deliver_policy": "all",
+        "filter_subject": "${3:orders.>}",
+        "ack_wait": 30000000000,
+        "max_deliver": -1,
+        "max_ack_pending": 1000
+      }
+    },
+    {
+      "label": "New push consumer",
+      "description": "Durable push consumer delivering to a subject",
+      "body": {
+        "durable_name": "${1:monitor}",
+        "ack_policy": "explicit",
+        "deliver_policy": "new",
+        "deliver_subject": "${2:deliver.monitor}",
+        "filter_subject": "${3:orders.>}",
+        "ack_wait": 30000000000
+      }
+    }
+  ]
+}

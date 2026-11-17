@@ -1,0 +1,446 @@
+/* Health Dashboard (hl-*). Built on the design-system tokens (lib/styles.css) and
+   layout kit (lib/dashboard.css); theme colours come only from VS Code variables. */
+
+/* ---- header meta ---- */
+
+.hl-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-6);
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+
+.hl-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  white-space: nowrap;
+}
+
+.hl-meta-item .codicon {
+  font-size: 13px;
+}
+
+.hl-conn-select select {
+  max-width: 220px;
+}
+
+/* ---- score card ---- */
+
+.hl-score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-5);
+}
+
+.hl-subscores {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  display: grid;
+  gap: var(--sp-2);
+}
+
+.hl-subscores li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  font-size: var(--fs-sm);
+  padding: var(--sp-1) 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.hl-sub-label {
+  color: var(--muted);
+}
+
+.hl-sub-score {
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--fw-semibold);
+}
+
+.hl-center {
+  text-align: center;
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+
+.hl-scale {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-5);
+  font-size: var(--fs-xs);
+}
+
+.hl-scale > span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+
+.hl-scale .codicon {
+  font-size: 12px;
+}
+
+/* ---- resources table ---- */
+
+.hl-sev {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+}
+
+.hl-sev .codicon {
+  font-size: 14px;
+}
+
+.hl-sev-error .codicon {
+  color: var(--danger);
+}
+
+.hl-sev-warning .codicon {
+  color: var(--warn);
+}
+
+.hl-sev-info .codicon {
+  color: var(--info);
+}
+
+.hl-sev-ok {
+  color: var(--muted);
+}
+
+.hl-sev-ok .codicon {
+  color: var(--ok);
+}
+
+.hl-res {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.hl-res > .codicon {
+  flex: none;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.hl-res-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hl-counts {
+  display: inline-flex;
+  gap: var(--sp-4);
+  justify-content: flex-end;
+  font-variant-numeric: tabular-nums;
+}
+
+.hl-counts > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.hl-counts .codicon {
+  font-size: 13px;
+}
+
+.hl-summary {
+  font-size: var(--fs-sm);
+}
+
+/* ---- findings ---- */
+
+.hl-filters {
+  padding-bottom: var(--sp-5);
+  margin-bottom: var(--sp-2);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.hl-chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+}
+
+.hl-search {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--muted);
+  flex: 1 1 180px;
+  min-width: 140px;
+  max-width: 320px;
+  margin-left: auto;
+}
+
+.hl-search input {
+  flex: 1;
+  min-width: 0;
+}
+
+.hl-findings {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.hl-finding {
+  position: relative;
+  padding: var(--sp-5) var(--sp-2) var(--sp-5) var(--sp-5);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.hl-finding:last-child {
+  border-bottom: 0;
+}
+
+/* Severity accent on the left edge (the icon + label carry the meaning). */
+.hl-finding::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: var(--sp-5);
+  bottom: var(--sp-5);
+  width: 3px;
+  border-radius: 2px;
+  background: var(--accent-color, var(--border));
+}
+
+.hl-finding-error {
+  --accent-color: var(--danger);
+}
+
+.hl-finding-warning {
+  --accent-color: var(--warn);
+}
+
+.hl-finding-info {
+  --accent-color: var(--info);
+}
+
+.hl-finding-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-4);
+}
+
+.hl-finding-icon {
+  flex: none;
+  padding-top: 2px;
+}
+
+.hl-finding-icon .codicon {
+  font-size: 16px;
+}
+
+.hl-finding-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.hl-finding-title {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--fg);
+  font: inherit;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  text-align: left;
+  cursor: pointer;
+  line-height: 1.35;
+}
+
+.hl-finding-title:hover span {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.hl-finding-title:focus-visible {
+  outline: 1px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.hl-chevron {
+  flex: none;
+  margin-top: 1px;
+  color: var(--muted);
+}
+
+.hl-finding-sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-1) var(--sp-5);
+  margin: var(--sp-2) 0 0 calc(16px + var(--sp-2));
+  font-size: var(--fs-sm);
+}
+
+.hl-target {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-3);
+  border-radius: var(--radius-sm);
+  background: var(--vscode-textCodeBlock-background, var(--surface-sunken));
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hl-target .codicon {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.hl-check-id {
+  font-size: var(--fs-xs);
+}
+
+.hl-finding-actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.hl-detail {
+  margin: var(--sp-3) 0 0 calc(16px + var(--sp-4) + 16px + var(--sp-2));
+  color: var(--fg);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  max-width: 110ch;
+}
+
+.hl-reco {
+  margin: var(--sp-4) 0 0 calc(16px + var(--sp-4) + 16px + var(--sp-2));
+  padding: var(--sp-4) var(--sp-5);
+  border-radius: var(--radius);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-subtle);
+  max-width: 110ch;
+}
+
+.hl-reco p {
+  margin: var(--sp-2) 0 0;
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+}
+
+.hl-reco-label {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.hl-docs {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+  font-size: var(--fs-sm);
+}
+
+.hl-more {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3) var(--sp-5);
+  padding: var(--sp-5) var(--sp-2) var(--sp-2) var(--sp-5);
+  border-top: 1px solid var(--border-subtle);
+  font-size: var(--fs-sm);
+}
+
+.hl-notes {
+  margin-top: var(--sp-5);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.hl-notes ul {
+  margin: var(--sp-3) 0 0;
+  padding-left: var(--sp-7);
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+}
+
+/* ---- narrow layouts ---- */
+
+@container ds-body (max-width: 640px) {
+  .hl-finding-head {
+    flex-wrap: wrap;
+  }
+
+  .hl-finding-actions {
+    width: 100%;
+    padding-left: calc(16px + var(--sp-4));
+  }
+
+  .hl-detail,
+  .hl-reco {
+    margin-left: calc(16px + var(--sp-4));
+  }
+
+  .hl-finding-sub {
+    margin-left: 0;
+  }
+
+  .hl-search {
+    margin-left: 0;
+    max-width: none;
+  }
+
+  .hl-conn-select select {
+    max-width: 140px;
+  }
+}
+
+body.vscode-high-contrast .hl-finding::before {
+  width: 4px;
+}
+
+body.vscode-high-contrast .hl-target {
+  border: 1px solid var(--border);
+}
+
+/* Design-system InfoTip tooltips are centred under their icon and stay in the layout while
+   hidden, so a tip on a right-edge KPI tile widens the scroll area. Take hidden tips out of
+   the layout, and anchor the right-most tile's tip to its right edge. */
+.ds-infotip:not(:hover):not(:focus-visible)::after {
+  display: none;
+}
+
+.ds-kpis > :last-child .ds-infotip::after {
+  left: auto;
+  right: -8px;
+  transform: none;
+}
+
+/* Same vertical rhythm as .ds-body for grouped sections (loading skeleton). */
+.hl-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+}

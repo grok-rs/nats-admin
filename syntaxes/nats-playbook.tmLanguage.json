@@ -1,0 +1,280 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "NATS Playbook",
+  "scopeName": "source.nats-playbook",
+  "patterns": [
+    {
+      "include": "#section"
+    },
+    {
+      "include": "#comment"
+    },
+    {
+      "include": "#directive"
+    },
+    {
+      "include": "#request"
+    }
+  ],
+  "repository": {
+    "section": {
+      "match": "^(###)(.*)$",
+      "captures": {
+        "1": {
+          "name": "punctuation.definition.heading.nats-playbook"
+        },
+        "2": {
+          "name": "markup.heading.nats-playbook entity.name.section.nats-playbook"
+        }
+      }
+    },
+    "comment": {
+      "match": "^\\s*(?:#(?!##)|//).*$",
+      "name": "comment.line.number-sign.nats-playbook"
+    },
+    "directive": {
+      "match": "^\\s*(@connection)(?:\\s+(.*?))?\\s*$",
+      "captures": {
+        "1": {
+          "name": "keyword.other.directive.connection.nats-playbook"
+        },
+        "2": {
+          "name": "string.unquoted.connection-name.nats-playbook"
+        }
+      }
+    },
+    "request": {
+      "name": "meta.request.nats-playbook",
+      "begin": "^\\s*((?i:PUBLISH|PUB|REQUEST|REQ|SUBSCRIBE|SUB))\\s+(\\S+)(.*)$",
+      "beginCaptures": {
+        "1": {
+          "name": "keyword.control.verb.nats-playbook"
+        },
+        "2": {
+          "name": "entity.name.function.subject.nats-playbook",
+          "patterns": [
+            {
+              "include": "#template"
+            },
+            {
+              "include": "#wildcard"
+            }
+          ]
+        },
+        "3": {
+          "patterns": [
+            {
+              "include": "#option"
+            }
+          ]
+        }
+      },
+      "end": "(?=^###)",
+      "patterns": [
+        {
+          "include": "#jsonBody"
+        },
+        {
+          "include": "#textBody"
+        },
+        {
+          "include": "#header"
+        },
+        {
+          "include": "#template"
+        }
+      ]
+    },
+    "header": {
+      "match": "^([A-Za-z0-9][A-Za-z0-9_.\\-]*)\\s*(:)\\s?(.*)$",
+      "captures": {
+        "1": {
+          "name": "support.type.property-name.header.nats-playbook"
+        },
+        "2": {
+          "name": "punctuation.separator.key-value.nats-playbook"
+        },
+        "3": {
+          "name": "string.unquoted.header-value.nats-playbook",
+          "patterns": [
+            {
+              "include": "#template"
+            }
+          ]
+        }
+      }
+    },
+    "textBody": {
+      "comment": "After the first blank line everything up to the next ### is body.",
+      "name": "meta.body.nats-playbook",
+      "begin": "^\\s*$",
+      "end": "(?=^###)",
+      "patterns": [
+        {
+          "include": "#jsonBody"
+        },
+        {
+          "include": "#template"
+        }
+      ]
+    },
+    "jsonBody": {
+      "name": "meta.body.json.nats-playbook",
+      "begin": "^(?=\\s*[\\[{])",
+      "end": "(?=^###)",
+      "contentName": "meta.embedded.block.json",
+      "patterns": [
+        {
+          "include": "#template"
+        },
+        {
+          "include": "#jsonKey"
+        },
+        {
+          "include": "#jsonString"
+        },
+        {
+          "include": "#jsonNumber"
+        },
+        {
+          "include": "#jsonConstant"
+        },
+        {
+          "include": "#jsonPunctuation"
+        }
+      ]
+    },
+    "jsonKey": {
+      "match": "(\"(?:[^\"\\\\]|\\\\.)*\")\\s*(?=:)",
+      "captures": {
+        "1": {
+          "name": "support.type.property-name.json.nats-playbook",
+          "patterns": [
+            {
+              "include": "#template"
+            }
+          ]
+        }
+      }
+    },
+    "jsonString": {
+      "name": "string.quoted.double.json.nats-playbook",
+      "begin": "\"",
+      "end": "\"|$",
+      "patterns": [
+        {
+          "include": "#template"
+        },
+        {
+          "match": "\\\\(?:[\"\\\\/bfnrt]|u[0-9a-fA-F]{4})",
+          "name": "constant.character.escape.json.nats-playbook"
+        },
+        {
+          "match": "\\\\.",
+          "name": "invalid.illegal.unrecognized-string-escape.json.nats-playbook"
+        }
+      ]
+    },
+    "jsonNumber": {
+      "match": "-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?(?![\\w.])",
+      "name": "constant.numeric.json.nats-playbook"
+    },
+    "jsonConstant": {
+      "match": "\\b(?:true|false|null)\\b",
+      "name": "constant.language.json.nats-playbook"
+    },
+    "jsonPunctuation": {
+      "patterns": [
+        {
+          "match": "[{}]",
+          "name": "punctuation.definition.dictionary.json.nats-playbook"
+        },
+        {
+          "match": "[\\[\\]]",
+          "name": "punctuation.definition.array.json.nats-playbook"
+        },
+        {
+          "match": ":",
+          "name": "punctuation.separator.dictionary.key-value.json.nats-playbook"
+        },
+        {
+          "match": ",",
+          "name": "punctuation.separator.json.nats-playbook"
+        }
+      ]
+    },
+    "template": {
+      "match": "(\\{\\{)\\s*([\\w.\\-]+)((?::[^}:]*)*)\\s*(\\}\\})",
+      "name": "meta.template.nats-playbook",
+      "captures": {
+        "1": {
+          "name": "punctuation.definition.template.begin.nats-playbook"
+        },
+        "2": {
+          "name": "variable.other.template.nats-playbook"
+        },
+        "3": {
+          "name": "variable.parameter.template.nats-playbook"
+        },
+        "4": {
+          "name": "punctuation.definition.template.end.nats-playbook"
+        }
+      }
+    },
+    "wildcard": {
+      "match": "(?<=^|\\.)(?:\\*|>)(?=\\.|$)",
+      "name": "keyword.operator.wildcard.nats-playbook"
+    },
+    "option": {
+      "patterns": [
+        {
+          "match": "\\b([A-Za-z_]+)(=)(\\d+)(?=\\s|$)",
+          "captures": {
+            "1": {
+              "name": "variable.parameter.option.nats-playbook"
+            },
+            "2": {
+              "name": "keyword.operator.assignment.nats-playbook"
+            },
+            "3": {
+              "name": "constant.numeric.option-value.nats-playbook"
+            }
+          }
+        },
+        {
+          "match": "\\b([A-Za-z_]+)(=)(true|false)(?=\\s|$)",
+          "captures": {
+            "1": {
+              "name": "variable.parameter.option.nats-playbook"
+            },
+            "2": {
+              "name": "keyword.operator.assignment.nats-playbook"
+            },
+            "3": {
+              "name": "constant.language.option-value.nats-playbook"
+            }
+          }
+        },
+        {
+          "match": "\\b([A-Za-z_]+)(=)(\"[^\"]*\"|\\S+)",
+          "captures": {
+            "1": {
+              "name": "variable.parameter.option.nats-playbook"
+            },
+            "2": {
+              "name": "keyword.operator.assignment.nats-playbook"
+            },
+            "3": {
+              "name": "string.unquoted.option-value.nats-playbook",
+              "patterns": [
+                {
+                  "include": "#template"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,142 @@
+.list-head {
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tree-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding-right: 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  border-left: 2px solid transparent;
+}
+
+.tree-row:hover {
+  background: var(--hover);
+}
+
+.tree-row.selected {
+  background: var(--inactive-selected);
+  border-left-color: var(--vscode-focusBorder);
+}
+
+.tree-row.flash-row {
+  animation: rowflash 1.5s ease-out;
+}
+
+.tree-row .twisty {
+  width: 16px;
+  font-size: 12px !important;
+  flex: none;
+  display: inline-block;
+}
+
+.tree-icon {
+  font-size: 14px !important;
+  color: var(--muted);
+}
+
+.tree-row .codicon-symbol-field {
+  color: var(--vscode-symbolIcon-fieldForeground, var(--accent));
+}
+
+.tree-row .codicon-symbol-object {
+  color: var(--vscode-symbolIcon-objectForeground, var(--warn));
+}
+
+.tree-name {
+  font-family: var(--mono);
+  font-size: var(--mono-size);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tree-row .num {
+  min-width: 56px;
+  text-align: right;
+}
+
+.add-key {
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.add-key textarea {
+  min-height: 60px;
+}
+
+.type-chip {
+  display: inline-block;
+  padding: 0 5px;
+  margin-right: 3px;
+  border-radius: 3px;
+  font-size: 0.82em;
+  font-family: var(--mono);
+  border: 1px solid var(--border);
+}
+
+.type-object {
+  color: var(--vscode-symbolIcon-objectForeground, #ee9d28);
+}
+
+.type-array {
+  color: var(--vscode-symbolIcon-arrayForeground, #cca700);
+}
+
+.type-string {
+  color: var(--vscode-debugTokenExpression-string, #ce9178);
+}
+
+.type-number {
+  color: var(--vscode-debugTokenExpression-number, #b5cea8);
+}
+
+.type-boolean {
+  color: var(--vscode-debugTokenExpression-boolean, #569cd6);
+}
+
+.type-null {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.shape-table td {
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+/* ---- overview (bucket / prefix insights) ---- */
+
+.kv-overview {
+  gap: var(--sp-5);
+}
+
+.kv-shape-scroll {
+  overflow: auto;
+  max-height: 420px;
+}
+
+.kv-shape-scroll .shape-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-raised);
+}
+
+/* KPI hint tooltips stay inside their tile (the pane is narrow and scrolls). */
+.kv-overview .ds-kpi .ds-infotip {
+  position: static;
+}
+
+.kv-overview .ds-kpi .ds-infotip::after {
+  left: 8px;
+  right: 8px;
+  top: 30px;
+  width: auto;
+  max-width: none;
+  transform: none;
+}

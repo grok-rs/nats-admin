@@ -1,0 +1,460 @@
+/* Overview sidebar (webview view, designed for ~280–400px). Sits on the side bar background;
+   everything else comes from the design system (lib/dashboard.css, lib/charts/charts.css). */
+
+:root {
+  --surface: var(--vscode-sideBar-background, var(--vscode-editor-background));
+}
+
+body {
+  background: var(--surface);
+}
+
+/* ---- density: the sidebar is narrow, tighten the dashboard kit ---- */
+
+.ov .ds-body {
+  padding: var(--sp-4) var(--sp-4) var(--sp-7);
+  gap: var(--sp-4);
+}
+
+.ov .ds-header-main {
+  padding: var(--sp-4) var(--sp-3) var(--sp-3) var(--sp-4);
+  gap: var(--sp-3) var(--sp-4);
+  min-height: 0;
+}
+
+.ov .ds-header-text {
+  flex: 1 1 140px;
+}
+
+.ov .ds-header-actions {
+  margin-left: auto;
+  gap: 0;
+}
+
+.ov .ds-header-meta {
+  padding: 0 var(--sp-4) var(--sp-4);
+}
+
+.ov .ds-prod-banner {
+  padding: 4px var(--sp-4);
+}
+
+.ov .ds-prod-text {
+  white-space: normal;
+}
+
+.ov .ds-kpis {
+  gap: var(--sp-3);
+}
+
+.ov .ds-kpi {
+  padding: 6px 9px 7px;
+}
+
+.ov .ds-kpi-value {
+  font-size: var(--fs-xl);
+}
+
+.ov .ds-kpi-trend {
+  margin-top: 2px;
+}
+
+/* 2 × 2 throughput tiles in the sidebar, one row when the view is wide (panel area). */
+.ov .ov-throughput {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ov .ov-inventory {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@container ds-body (min-width: 520px) {
+  .ov .ov-throughput {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .ov .ov-inventory {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+.ov-inventory .ds-kpi {
+  padding: 5px 7px 6px;
+}
+
+.ov-inventory .ds-kpi-value {
+  font-size: var(--fs-lg);
+}
+
+.ov-inventory .ds-kpi-label {
+  font-size: var(--fs-xs);
+}
+
+.ov .ds-card-header {
+  padding: 6px 6px 0 10px;
+  min-height: 30px;
+}
+
+.ov .ds-card-body {
+  padding: 8px 10px 10px;
+  gap: var(--sp-4);
+}
+
+.ov .ds-card-body.ds-flush {
+  padding: 4px 0 2px;
+}
+
+.ov .ds-section-heading {
+  margin-top: var(--sp-2);
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.ov .ds-section-actions {
+  margin-left: 0;
+}
+
+.ov .ds-empty-compact {
+  padding: var(--sp-5) var(--sp-4);
+}
+
+/* ---- header RTT line ---- */
+
+.ov-rtt {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  min-width: 0;
+  font-size: var(--fs-sm);
+}
+
+.ov-rtt-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+  flex: none;
+}
+
+.ov-rtt-label .codicon {
+  font-size: 12px;
+}
+
+.ov-rtt-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: none;
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.ov-rtt-value .codicon {
+  font-size: 12px;
+}
+
+.ov-rtt-spark {
+  flex: 1;
+  min-width: 40px;
+  --vz-surface: var(--surface);
+}
+
+/* ---- notes / errors ---- */
+
+.ov-note,
+.ov-error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: 6px 8px;
+  border-radius: var(--radius);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+}
+
+.ov-note {
+  background: var(--info-bg);
+  border: 1px solid color-mix(in srgb, var(--info) 40%, transparent);
+}
+
+.ov-note > .codicon {
+  color: var(--info);
+  margin-top: 1px;
+}
+
+.ov-note .mono {
+  word-break: break-all;
+}
+
+.ov-note .ds-link {
+  margin-left: auto;
+  flex: none;
+}
+
+.ov-error {
+  background: var(--danger-bg);
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
+  word-break: break-word;
+}
+
+.ov-foot {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+
+/* ---- health ---- */
+
+.ov-health-head,
+.ov-health-empty {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+}
+
+.ov-health-empty .btn {
+  margin-left: auto;
+}
+
+.ov-counts {
+  display: inline-flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.ov-findings {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: var(--fs-sm);
+}
+
+.ov-findings li {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ov-findings li .codicon {
+  flex: none;
+  margin-top: 2px;
+  font-size: 13px;
+}
+
+/* ---- quick actions ---- */
+
+.ov-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-3);
+}
+
+.ov-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 52px;
+  padding: 6px 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--vscode-foreground);
+  font: inherit;
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  min-width: 0;
+}
+
+.ov-action span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ov-action .codicon {
+  font-size: 16px;
+  color: var(--accent);
+}
+
+.ov-action:hover {
+  background: var(--hover);
+  border-color: var(--vscode-focusBorder);
+}
+
+.ov-action:focus-visible {
+  outline: 1px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.ov-action-blocked,
+.ov-action-blocked:hover {
+  cursor: not-allowed;
+  opacity: 0.55;
+  border-color: var(--border);
+  background: var(--surface);
+}
+
+.ov-action-blocked .codicon {
+  color: var(--muted);
+}
+
+body.vscode-high-contrast .ov-action {
+  border-color: var(--vscode-contrastBorder, var(--border));
+}
+
+@media (max-width: 230px) {
+  .ov-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ---- connection lists ---- */
+
+.ov-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ov-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: 5px 8px 5px 10px;
+  min-width: 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.ov-item:first-child {
+  border-top: none;
+}
+
+.ov-item:hover {
+  background: var(--hover);
+}
+
+.ov-item-active {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.ov-item-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.ov-item-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-weight: var(--fw-medium);
+}
+
+.ov-item-name .ds-env {
+  height: 16px;
+  padding: 0 6px 0 5px;
+  font-size: var(--fs-2xs);
+  flex: none;
+}
+
+.ov-lock {
+  font-size: 12px !important;
+  color: var(--muted);
+}
+
+.ov-item-sub {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+
+.ov-item-sub.tone-danger {
+  color: var(--danger);
+}
+
+.ov-origin {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-right: 6px;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  font-family: var(--vscode-font-family);
+  font-size: var(--fs-2xs);
+  color: var(--muted);
+  vertical-align: 1px;
+}
+
+.ov-origin .codicon {
+  font-size: 10px;
+}
+
+.ov-active-tag {
+  flex: none;
+  font-size: var(--fs-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  padding: 0 4px;
+}
+
+.ov-empty-line,
+.ov-more {
+  padding: 6px 10px 8px;
+}
+
+.ov-env-card {
+  box-shadow: inset 3px 0 0 var(--env-color, transparent);
+}
+
+.ov-cta,
+.ov-docs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  justify-content: center;
+}
+
+.ov-docs .ds-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* InfoTip bubbles are 260px wide and centred on their icon, which spills past a narrow
+   sidebar (and, even while hidden, widens the scroll area). Anchor them to the full-width
+   KPI row / section heading instead and keep them out of layout until shown. */
+.ov .ds-infotip,
+.ov .ds-kpi {
+  position: static;
+}
+
+.ov .ds-kpis,
+.ov .ds-section-heading {
+  position: relative;
+}
+
+.ov .ds-infotip::after {
+  left: 0;
+  right: 0;
+  transform: none;
+  width: auto;
+  max-width: none;
+  display: none;
+}
+
+.ov .ds-infotip:hover::after,
+.ov .ds-infotip:focus-visible::after {
+  display: block;
+}

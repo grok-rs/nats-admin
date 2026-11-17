@@ -1,0 +1,15 @@
+**
+!package.json
+!README.md
+!CHANGELOG.md
+!LICENSE
+!dist/extension.js
+!dist/webview/*.js
+!dist/webview/*.css
+!dist/codicons/**
+!media/**
+!syntaxes/**
+!schemas/**
+dist/webview/gallery.*
+media/icon.svg
+media/walkthrough/*.png

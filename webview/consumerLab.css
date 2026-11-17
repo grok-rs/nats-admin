@@ -1,0 +1,145 @@
+.cl-badges {
+  gap: 6px;
+}
+
+.cl-summary {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cl-summary .banner {
+  margin: 0;
+}
+
+.cl-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cl-bar {
+  position: relative;
+  height: 8px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--border) 70%, transparent);
+  overflow: hidden;
+}
+
+.cl-bar-acked {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: var(--ok);
+  opacity: 0.85;
+}
+
+.cl-bar-inflight {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--warn);
+  opacity: 0.85;
+}
+
+.cl-legend,
+.cl-config {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  font-size: 0.88em;
+  color: var(--muted);
+}
+
+.cl-legend b,
+.cl-config b {
+  color: var(--vscode-foreground);
+  font-weight: 600;
+}
+
+.cl-swatch {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  margin-right: 3px;
+}
+
+.cl-sw-acked {
+  background: var(--ok);
+}
+
+.cl-sw-inflight {
+  background: var(--warn);
+}
+
+.cl-sw-rest {
+  background: color-mix(in srgb, var(--border) 70%, transparent);
+  border: 1px solid var(--border);
+}
+
+.cl-num {
+  width: 92px;
+}
+
+.cl-reason {
+  width: 160px;
+}
+
+.cl-fetch {
+  align-self: flex-end;
+}
+
+.cl-sep {
+  width: 1px;
+  align-self: stretch;
+  background: var(--border);
+  margin: 0 4px;
+}
+
+.toolbar .btn {
+  align-self: flex-end;
+}
+
+.cl-table td.cl-subj {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cl-table tr.cl-settled td {
+  opacity: 0.6;
+}
+
+.cl-table tr.selected.cl-settled td {
+  opacity: 1;
+}
+
+.cl-redelivered {
+  color: var(--warn);
+}
+
+.cl-mini {
+  font-size: 11px !important;
+  margin-left: 2px;
+  vertical-align: middle;
+}
+
+.cl-actions {
+  white-space: nowrap;
+  width: 1%;
+}
+
+.cl-ackbtns {
+  gap: 2px;
+}
+
+@media (max-width: 900px) {
+  .cl-table th:nth-child(5),
+  .cl-table td.preview {
+    display: none;
+  }
+}

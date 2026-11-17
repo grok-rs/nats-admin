@@ -1,0 +1,1786 @@
+{
+  "name": "nats-admin",
+  "displayName": "NATS Admin — JetStream, KV & Dashboards",
+  "description": "Operate NATS from VS Code: auto-discovered contexts, production-safe connections, fleet/server/stream/cluster dashboards, health checks, topology graph, Key-Value data-structure browser, message browser, live tail, consumer lab and JetStream config as code.",
+  "version": "0.2.0",
+  "publisher": "nats-admin",
+  "license": "MIT",
+  "private": true,
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "Visualization",
+    "Other",
+    "Testing"
+  ],
+  "keywords": [
+    "nats",
+    "jetstream",
+    "kv",
+    "key-value",
+    "object store",
+    "messaging",
+    "pubsub",
+    "devops",
+    "monitoring",
+    "dashboard",
+    "message queue"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onFileSystem:nats-kv",
+    "onFileSystem:nats-config",
+    "onFileSystem:nats-info",
+    "onLanguage:nats-playbook",
+    "workspaceContains:**/*.stream.json",
+    "workspaceContains:**/*.consumer.json",
+    "workspaceContains:**/*.kv.json"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "nats",
+          "title": "NATS",
+          "icon": "media/nats.svg"
+        }
+      ]
+    },
+    "views": {
+      "nats": [
+        {
+          "type": "webview",
+          "id": "nats.overview",
+          "name": "Overview",
+          "icon": "media/nats.svg",
+          "contextualTitle": "NATS"
+        },
+        {
+          "id": "nats.explorer",
+          "name": "Connections",
+          "icon": "media/nats.svg",
+          "contextualTitle": "NATS"
+        },
+        {
+          "id": "nats.health",
+          "name": "Health",
+          "icon": "media/nats.svg",
+          "contextualTitle": "NATS"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "nats.explorer",
+        "when": "nats.localServerDetected",
+        "contents": "A NATS server is listening on localhost:4222.\n[$(plug) Connect to localhost](command:nats.connectLocal)"
+      },
+      {
+        "view": "nats.explorer",
+        "contents": "No NATS connections yet.\nNATS CLI contexts (~/.config/nats/context), NATS_URL and workspace connections (setting nats.connections) appear here automatically.\n[Add Connection](command:nats.addConnection)\n[Show Hidden Connections](command:nats.showHiddenConnections)\nSecrets are kept in your OS keychain via VS Code SecretStorage."
+      },
+      {
+        "view": "nats.health",
+        "contents": "Health checks analyse streams, consumers, buckets, the JetStream account and the server against NATS best practices.\n[$(pulse) Run Health Check](command:nats.runHealthCheck)"
+      }
+    ],
+    "languages": [
+      {
+        "id": "nats-playbook",
+        "aliases": [
+          "NATS Playbook",
+          "nats"
+        ],
+        "extensions": [
+          ".nats"
+        ],
+        "configuration": "./syntaxes/nats-playbook.language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "nats-playbook",
+        "scopeName": "source.nats-playbook",
+        "path": "./syntaxes/nats-playbook.tmLanguage.json",
+        "embeddedLanguages": {
+          "meta.embedded.block.json": "json"
+        }
+      }
+    ],
+    "commands": [
+      {
+        "command": "nats.addConnection",
+        "title": "Add Connection",
+        "category": "NATS",
+        "icon": "$(add)"
+      },
+      {
+        "command": "nats.importContexts",
+        "title": "Copy NATS CLI Contexts into VS Code…",
+        "category": "NATS",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "nats.editConnection",
+        "title": "Edit Connection",
+        "category": "NATS",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "nats.duplicateConnection",
+        "title": "Duplicate Connection",
+        "category": "NATS"
+      },
+      {
+        "command": "nats.removeConnection",
+        "title": "Remove Connection",
+        "category": "NATS",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "nats.connect",
+        "title": "Connect",
+        "category": "NATS",
+        "icon": "$(plug)"
+      },
+      {
+        "command": "nats.disconnect",
+        "title": "Disconnect",
+        "category": "NATS",
+        "icon": "$(debug-disconnect)"
+      },
+      {
+        "command": "nats.selectActiveConnection",
+        "title": "Select Active Connection",
+        "category": "NATS"
+      },
+      {
+        "command": "nats.refresh",
+        "title": "Refresh",
+        "category": "NATS",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "nats.refreshNode",
+        "title": "Refresh",
+        "category": "NATS",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "nats.openDashboard",
+        "title": "Open Server Dashboard",
+        "category": "NATS",
+        "icon": "$(dashboard)"
+      },
+      {
+        "command": "nats.serverInfo",
+        "title": "Show Server Info (JSON)",
+        "category": "NATS",
+        "icon": "$(info)"
+      },
+      {
+        "command": "nats.createStream",
+        "title": "Create Stream…",
+        "category": "NATS",
+        "icon": "$(add)"
+      },
+      {
+        "command": "nats.streamInfo",
+        "title": "Stream Info",
+        "category": "NATS",
+        "icon": "$(info)"
+      },
+      {
+        "command": "nats.editStreamConfig",
+        "title": "Edit Stream Config (JSON)",
+        "category": "NATS",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "nats.purgeStream",
+        "title": "Purge Stream…",
+        "category": "NATS",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "nats.deleteStream",
+        "title": "Delete Stream",
+        "category": "NATS",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "nats.browseMessages",
+        "title": "Browse Messages",
+        "category": "NATS",
+        "icon": "$(list-flat)"
+      },
+      {
+        "command": "nats.publishToStream",
+        "title": "Publish to Stream…",
+        "category": "NATS",
+        "icon": "$(send)"
+      },
+      {
+        "command": "nats.createConsumer",
+        "title": "Create Consumer…",
+        "category": "NATS",
+        "icon": "$(add)"
+      },
+      {
+        "command": "nats.consumerInfo",
+        "title": "Consumer Info",
+        "category": "NATS",
+        "icon": "$(info)"
+      },
+      {
+        "command": "nats.editConsumerConfig",
+        "title": "Edit Consumer Config (JSON)",
+        "category": "NATS",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "nats.deleteConsumer",
+        "title": "Delete Consumer",
+        "category": "NATS",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "nats.openConsumerLab",
+        "title": "Open Consumer Lab",
+        "category": "NATS",
+        "icon": "$(beaker)"
+      },
+      {
+        "command": "nats.createKvBucket",
+        "title": "Create KV Bucket…",
+        "category": "NATS",
+        "icon": "$(add)"
+      },
+      {
+        "command": "nats.deleteKvBucket",
+        "title": "Delete KV Bucket",
+        "category": "NATS",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "nats.kvBucketInfo",
+        "title": "KV Bucket Status",
+        "category": "NATS",
+        "icon": "$(info)"
+      },
+      {
+        "command": "nats.openKvBrowser",
+        "title": "Open KV Browser",
+        "category": "NATS",
+        "icon": "$(table)"
+      },
+      {
+        "command": "nats.kvAddKey",
+        "title": "Add Key…",
+        "category": "NATS",
+        "icon": "$(add)"
+      },
+      {
+        "command": "nats.kvOpenKey",
+        "title": "Open Value",
+        "category": "NATS",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "nats.kvDeleteKey",
+        "title": "Delete Key",
+        "category": "NATS",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "nats.kvPurgeKey",
+        "title": "Purge Key (drop history)",
+        "category": "NATS"
+      },
+      {
+        "command": "nats.kvKeyHistory",
+        "title": "Show Key History…",
+        "category": "NATS",
+        "icon": "$(history)"
+      },
+      {
+        "command": "nats.kvFilterKeys",
+        "title": "Filter Keys…",
+        "category": "NATS",
+        "icon": "$(filter)"
+      },
+      {
+        "command": "nats.kvCopyKey",
+        "title": "Copy Key",
+        "category": "NATS"
+      },
+      {
+        "command": "nats.kvCopyValue",
+        "title": "Copy Value",
+        "category": "NATS"
+      },
+      {
+        "command": "nats.createObjBucket",
+        "title": "Create Object Store Bucket…",
+        "category": "NATS",
+        "icon": "$(add)"
+      },
+      {
+        "command": "nats.deleteObjBucket",
+        "title": "Delete Object Store Bucket",
+        "category": "NATS",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "nats.objBucketInfo",
+        "title": "Object Store Status",
+        "category": "NATS",
+        "icon": "$(info)"
+      },
+      {
+        "command": "nats.objUpload",
+        "title": "Upload File…",
+        "category": "NATS",
+        "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "nats.objDownload",
+        "title": "Download…",
+        "category": "NATS",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "nats.objOpen",
+        "title": "Open Object",
+        "category": "NATS",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "nats.objInfo",
+        "title": "Object Info",
+        "category": "NATS",
+        "icon": "$(info)"
+      },
+      {
+        "command": "nats.objDelete",
+        "title": "Delete Object",
+        "category": "NATS",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "nats.subscribe",
+        "title": "Live Tail (Subscribe)…",
+        "category": "NATS",
+        "icon": "$(radio-tower)"
+      },
+      {
+        "command": "nats.publish",
+        "title": "Publish Message…",
+        "category": "NATS",
+        "icon": "$(send)"
+      },
+      {
+        "command": "nats.request",
+        "title": "Request / Reply…",
+        "category": "NATS",
+        "icon": "$(arrow-swap)"
+      },
+      {
+        "command": "nats.publishSelection",
+        "title": "Publish Selection to Subject…",
+        "category": "NATS",
+        "icon": "$(send)"
+      },
+      {
+        "command": "nats.deadLetters",
+        "title": "Dead Letter Monitor",
+        "category": "NATS",
+        "icon": "$(warning)"
+      },
+      {
+        "command": "nats.newPlaybook",
+        "title": "New Playbook (.nats)",
+        "category": "NATS",
+        "icon": "$(new-file)"
+      },
+      {
+        "command": "nats.runPlaybookBlock",
+        "title": "Run Playbook Block",
+        "category": "NATS"
+      },
+      {
+        "command": "nats.setPlaybookConnection",
+        "title": "Set Playbook Connection",
+        "category": "NATS"
+      },
+      {
+        "command": "nats.serviceInfo",
+        "title": "Service Info",
+        "category": "NATS",
+        "icon": "$(info)"
+      },
+      {
+        "command": "nats.requestEndpoint",
+        "title": "Send Request to Endpoint…",
+        "category": "NATS",
+        "icon": "$(arrow-swap)"
+      },
+      {
+        "command": "nats.copyName",
+        "title": "Copy Name",
+        "category": "NATS"
+      },
+      {
+        "command": "nats.refreshInfoDoc",
+        "title": "Refresh",
+        "category": "NATS",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "nats.connectLocal",
+        "title": "Connect to Local Server (localhost:4222)",
+        "category": "NATS",
+        "icon": "$(plug)"
+      },
+      {
+        "command": "nats.setEnvironment",
+        "title": "Set Environment…",
+        "category": "NATS",
+        "icon": "$(symbol-color)"
+      },
+      {
+        "command": "nats.toggleReadOnly",
+        "title": "Toggle Read-Only Mode",
+        "category": "NATS",
+        "icon": "$(lock)"
+      },
+      {
+        "command": "nats.toggleAutoConnect",
+        "title": "Toggle Auto-Connect on Startup",
+        "category": "NATS"
+      },
+      {
+        "command": "nats.openContextFile",
+        "title": "Open NATS CLI Context File",
+        "category": "NATS",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "nats.hideConnection",
+        "title": "Hide from Explorer",
+        "category": "NATS",
+        "icon": "$(eye-closed)"
+      },
+      {
+        "command": "nats.showHiddenConnections",
+        "title": "Show Hidden Connections…",
+        "category": "NATS",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "nats.saveAsManaged",
+        "title": "Save as VS Code Connection",
+        "category": "NATS",
+        "icon": "$(save)"
+      },
+      {
+        "command": "nats.openTerminal",
+        "title": "Open Terminal for nats CLI",
+        "category": "NATS",
+        "icon": "$(terminal)"
+      },
+      {
+        "command": "nats.copyCliCommand",
+        "title": "Copy nats CLI Command",
+        "category": "NATS",
+        "icon": "$(copy)"
+      },
+      {
+        "command": "nats.pauseConsumer",
+        "title": "Pause Consumer…",
+        "category": "NATS",
+        "icon": "$(debug-pause)"
+      },
+      {
+        "command": "nats.resumeConsumer",
+        "title": "Resume Consumer",
+        "category": "NATS",
+        "icon": "$(debug-continue)"
+      },
+      {
+        "command": "nats.resetConsumer",
+        "title": "Reset Consumer to Sequence…",
+        "category": "NATS",
+        "icon": "$(debug-restart)"
+      },
+      {
+        "command": "nats.runHealthCheck",
+        "title": "Run Health Check",
+        "category": "NATS",
+        "icon": "$(pulse)"
+      },
+      {
+        "command": "nats.openHealthDashboard",
+        "title": "Open Health Dashboard",
+        "category": "NATS",
+        "icon": "$(heart)"
+      },
+      {
+        "command": "nats.exportHealthReport",
+        "title": "Export Health Report (Markdown)",
+        "category": "NATS",
+        "icon": "$(markdown)"
+      },
+      {
+        "command": "nats.healthFix",
+        "title": "Apply Suggested Action",
+        "category": "NATS",
+        "icon": "$(lightbulb)"
+      },
+      {
+        "command": "nats.openStreamDashboard",
+        "title": "Open Stream Dashboard",
+        "category": "NATS",
+        "icon": "$(graph)"
+      },
+      {
+        "command": "nats.browseSubject",
+        "title": "Browse Messages on Subject",
+        "category": "NATS",
+        "icon": "$(list-flat)"
+      },
+      {
+        "command": "nats.openTopology",
+        "title": "Open JetStream Topology",
+        "category": "NATS",
+        "icon": "$(type-hierarchy)"
+      },
+      {
+        "command": "nats.openCluster",
+        "title": "Open Cluster Overview",
+        "category": "NATS",
+        "icon": "$(server-environment)"
+      },
+      {
+        "command": "nats.whoAmI",
+        "title": "Show User Info & Permissions",
+        "category": "NATS",
+        "icon": "$(account)"
+      },
+      {
+        "command": "nats.serverDetails",
+        "title": "Server Details",
+        "category": "NATS",
+        "icon": "$(info)"
+      },
+      {
+        "command": "nats.openHome",
+        "title": "Open NATS Home",
+        "category": "NATS",
+        "icon": "$(home)"
+      },
+      {
+        "command": "nats.exportConfig",
+        "title": "Export JetStream Config to Workspace…",
+        "category": "NATS",
+        "icon": "$(desktop-download)"
+      },
+      {
+        "command": "nats.applyConfigFile",
+        "title": "Apply Config to Server",
+        "category": "NATS",
+        "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "nats.compareConfigFile",
+        "title": "Compare Config with Server",
+        "category": "NATS",
+        "icon": "$(diff)"
+      },
+      {
+        "command": "nats.planConfigFolder",
+        "title": "Plan & Apply Config Folder…",
+        "category": "NATS",
+        "icon": "$(checklist)"
+      },
+      {
+        "command": "nats.kvImport",
+        "title": "Import Keys from JSON…",
+        "category": "NATS",
+        "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "nats.kvExport",
+        "title": "Export Keys to JSON…",
+        "category": "NATS",
+        "icon": "$(save-as)"
+      },
+      {
+        "command": "nats.gitops.selectTarget",
+        "title": "Select Target Connection for Config Folder",
+        "category": "NATS",
+        "icon": "$(plug)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "nats.addConnection",
+          "when": "view == nats.explorer",
+          "group": "navigation@1"
+        },
+        {
+          "command": "nats.openHome",
+          "when": "view == nats.explorer",
+          "group": "navigation@2"
+        },
+        {
+          "command": "nats.refresh",
+          "when": "view == nats.explorer",
+          "group": "navigation@3"
+        },
+        {
+          "command": "nats.importContexts",
+          "when": "view == nats.explorer",
+          "group": "1_conn@1"
+        },
+        {
+          "command": "nats.showHiddenConnections",
+          "when": "view == nats.explorer",
+          "group": "1_conn@2"
+        },
+        {
+          "command": "nats.newPlaybook",
+          "when": "view == nats.explorer",
+          "group": "2_tools@1"
+        },
+        {
+          "command": "nats.deadLetters",
+          "when": "view == nats.explorer",
+          "group": "2_tools@2"
+        },
+        {
+          "command": "nats.runHealthCheck",
+          "when": "view == nats.health",
+          "group": "navigation@1"
+        },
+        {
+          "command": "nats.openHealthDashboard",
+          "when": "view == nats.health",
+          "group": "navigation@2"
+        },
+        {
+          "command": "nats.exportHealthReport",
+          "when": "view == nats.health",
+          "group": "navigation@3"
+        },
+        {
+          "command": "nats.openHome",
+          "when": "view == nats.overview",
+          "group": "navigation@1"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "nats.refreshInfoDoc",
+          "when": "resourceScheme == nats-info",
+          "group": "navigation"
+        },
+        {
+          "command": "nats.compareConfigFile",
+          "when": "resourceFilename =~ /\\.(stream|consumer|kv)\\.json$/",
+          "group": "navigation@1"
+        },
+        {
+          "command": "nats.applyConfigFile",
+          "when": "resourceFilename =~ /\\.(stream|consumer|kv)\\.json$/",
+          "group": "navigation@2"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "nats.publishSelection",
+          "when": "editorHasSelection || resourceLangId == json",
+          "group": "9_nats@1"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "nats.connect",
+          "when": "view == nats.explorer && viewItem =~ /^connection\\.(disconnected|error)/",
+          "group": "inline@1"
+        },
+        {
+          "command": "nats.connect",
+          "when": "view == nats.explorer && viewItem =~ /^connection\\.(disconnected|error)/",
+          "group": "1_conn@1"
+        },
+        {
+          "command": "nats.openDashboard",
+          "when": "view == nats.explorer && viewItem =~ /^connection\\.connected/",
+          "group": "inline@1"
+        },
+        {
+          "command": "nats.disconnect",
+          "when": "view == nats.explorer && viewItem =~ /^connection\\.(connected|reconnecting|connecting)/",
+          "group": "inline@2"
+        },
+        {
+          "command": "nats.openDashboard",
+          "when": "view == nats.explorer && viewItem =~ /^connection\\.connected/",
+          "group": "1_conn@1"
+        },
+        {
+          "command": "nats.subscribe",
+          "when": "view == nats.explorer && viewItem =~ /^connection\\.connected/",
+          "group": "2_msg@1"
+        },
+        {
+          "command": "nats.publish",
+          "when": "view == nats.explorer && viewItem =~ /^connection\\.connected/",
+          "group": "2_msg@2"
+        },
+        {
+          "command": "nats.request",
+          "when": "view == nats.explorer && viewItem =~ /^connection\\.connected/",
+          "group": "2_msg@3"
+        },
+        {
+          "command": "nats.deadLetters",
+          "when": "view == nats.explorer && viewItem =~ /^connection\\.connected/",
+          "group": "2_msg@4"
+        },
+        {
+          "command": "nats.serverInfo",
+          "when": "view == nats.explorer && viewItem =~ /^connection\\.connected/",
+          "group": "3_info@1"
+        },
+        {
+          "command": "nats.disconnect",
+          "when": "view == nats.explorer && viewItem =~ /^connection\\.(connected|reconnecting|connecting)/",
+          "group": "4_conn@1"
+        },
+        {
+          "command": "nats.editConnection",
+          "when": "view == nats.explorer && viewItem =~ /^connection\\.[a-z]+\\.manual/",
+          "group": "5_edit@1"
+        },
+        {
+          "command": "nats.duplicateConnection",
+          "when": "view == nats.explorer && viewItem =~ /^connection\\./",
+          "group": "5_edit@2"
+        },
+        {
+          "command": "nats.removeConnection",
+          "when": "view == nats.explorer && viewItem =~ /^connection\\.[a-z]+\\.manual/",
+          "group": "5_edit@3"
+        },
+        {
+          "command": "nats.openDashboard",
+          "when": "view == nats.explorer && viewItem == server",
+          "group": "inline@1"
+        },
+        {
+          "command": "nats.serverInfo",
+          "when": "view == nats.explorer && viewItem == server",
+          "group": "1_info@1"
+        },
+        {
+          "command": "nats.createStream",
+          "when": "view == nats.explorer && viewItem == folder.streams",
+          "group": "inline@1"
+        },
+        {
+          "command": "nats.refreshNode",
+          "when": "view == nats.explorer && viewItem =~ /^folder\\./",
+          "group": "inline@9"
+        },
+        {
+          "command": "nats.createStream",
+          "when": "view == nats.explorer && viewItem == folder.streams",
+          "group": "1_create@1"
+        },
+        {
+          "command": "nats.browseMessages",
+          "when": "view == nats.explorer && viewItem == stream",
+          "group": "inline@1"
+        },
+        {
+          "command": "nats.streamInfo",
+          "when": "view == nats.explorer && viewItem == stream",
+          "group": "inline@2"
+        },
+        {
+          "command": "nats.browseMessages",
+          "when": "view == nats.explorer && viewItem == stream",
+          "group": "1_view@1"
+        },
+        {
+          "command": "nats.streamInfo",
+          "when": "view == nats.explorer && viewItem == stream",
+          "group": "1_view@2"
+        },
+        {
+          "command": "nats.publishToStream",
+          "when": "view == nats.explorer && viewItem == stream",
+          "group": "2_msg@1"
+        },
+        {
+          "command": "nats.createConsumer",
+          "when": "view == nats.explorer && viewItem == stream",
+          "group": "3_create@1"
+        },
+        {
+          "command": "nats.editStreamConfig",
+          "when": "view == nats.explorer && viewItem == stream",
+          "group": "4_edit@1"
+        },
+        {
+          "command": "nats.copyName",
+          "when": "view == nats.explorer && viewItem == stream",
+          "group": "4_edit@2"
+        },
+        {
+          "command": "nats.purgeStream",
+          "when": "view == nats.explorer && viewItem == stream",
+          "group": "9_danger@1"
+        },
+        {
+          "command": "nats.deleteStream",
+          "when": "view == nats.explorer && viewItem == stream",
+          "group": "9_danger@2"
+        },
+        {
+          "command": "nats.openConsumerLab",
+          "when": "view == nats.explorer && viewItem == consumer",
+          "group": "inline@1"
+        },
+        {
+          "command": "nats.consumerInfo",
+          "when": "view == nats.explorer && viewItem == consumer",
+          "group": "inline@2"
+        },
+        {
+          "command": "nats.openConsumerLab",
+          "when": "view == nats.explorer && viewItem == consumer",
+          "group": "1_view@1"
+        },
+        {
+          "command": "nats.consumerInfo",
+          "when": "view == nats.explorer && viewItem == consumer",
+          "group": "1_view@2"
+        },
+        {
+          "command": "nats.editConsumerConfig",
+          "when": "view == nats.explorer && viewItem == consumer",
+          "group": "4_edit@1"
+        },
+        {
+          "command": "nats.copyName",
+          "when": "view == nats.explorer && viewItem == consumer",
+          "group": "4_edit@2"
+        },
+        {
+          "command": "nats.deleteConsumer",
+          "when": "view == nats.explorer && viewItem == consumer",
+          "group": "9_danger@1"
+        },
+        {
+          "command": "nats.createKvBucket",
+          "when": "view == nats.explorer && viewItem == folder.kv",
+          "group": "inline@1"
+        },
+        {
+          "command": "nats.createKvBucket",
+          "when": "view == nats.explorer && viewItem == folder.kv",
+          "group": "1_create@1"
+        },
+        {
+          "command": "nats.openKvBrowser",
+          "when": "view == nats.explorer && viewItem =~ /^kvBucket/",
+          "group": "inline@1"
+        },
+        {
+          "command": "nats.kvAddKey",
+          "when": "view == nats.explorer && viewItem =~ /^kvBucket/",
+          "group": "inline@2"
+        },
+        {
+          "command": "nats.kvFilterKeys",
+          "when": "view == nats.explorer && viewItem =~ /^kvBucket/",
+          "group": "inline@3"
+        },
+        {
+          "command": "nats.openKvBrowser",
+          "when": "view == nats.explorer && viewItem =~ /^kvBucket/",
+          "group": "1_view@1"
+        },
+        {
+          "command": "nats.kvBucketInfo",
+          "when": "view == nats.explorer && viewItem =~ /^kvBucket/",
+          "group": "1_view@2"
+        },
+        {
+          "command": "nats.kvAddKey",
+          "when": "view == nats.explorer && viewItem =~ /^kvBucket/",
+          "group": "2_edit@1"
+        },
+        {
+          "command": "nats.kvFilterKeys",
+          "when": "view == nats.explorer && viewItem =~ /^kvBucket/",
+          "group": "2_edit@2"
+        },
+        {
+          "command": "nats.copyName",
+          "when": "view == nats.explorer && viewItem =~ /^kvBucket/",
+          "group": "2_edit@3"
+        },
+        {
+          "command": "nats.refreshNode",
+          "when": "view == nats.explorer && viewItem =~ /^kvBucket/",
+          "group": "2_edit@4"
+        },
+        {
+          "command": "nats.deleteKvBucket",
+          "when": "view == nats.explorer && viewItem =~ /^kvBucket/",
+          "group": "9_danger@1"
+        },
+        {
+          "command": "nats.kvAddKey",
+          "when": "view == nats.explorer && viewItem =~ /^kv(Folder|KeyFolder)/",
+          "group": "inline@2"
+        },
+        {
+          "command": "nats.kvKeyHistory",
+          "when": "view == nats.explorer && viewItem =~ /^kvKey/",
+          "group": "inline@1"
+        },
+        {
+          "command": "nats.kvOpenKey",
+          "when": "view == nats.explorer && viewItem =~ /^kvKey/",
+          "group": "1_view@1"
+        },
+        {
+          "command": "nats.kvKeyHistory",
+          "when": "view == nats.explorer && viewItem =~ /^kvKey/",
+          "group": "1_view@2"
+        },
+        {
+          "command": "nats.kvAddKey",
+          "when": "view == nats.explorer && viewItem =~ /^kv(Folder|KeyFolder)/",
+          "group": "2_edit@1"
+        },
+        {
+          "command": "nats.kvFilterKeys",
+          "when": "view == nats.explorer && viewItem =~ /^kv(Folder|KeyFolder)/",
+          "group": "2_edit@2"
+        },
+        {
+          "command": "nats.kvCopyKey",
+          "when": "view == nats.explorer && viewItem =~ /^kv(Key|Folder|KeyFolder)/",
+          "group": "3_copy@1"
+        },
+        {
+          "command": "nats.kvCopyValue",
+          "when": "view == nats.explorer && viewItem =~ /^kvKey/",
+          "group": "3_copy@2"
+        },
+        {
+          "command": "nats.kvDeleteKey",
+          "when": "view == nats.explorer && viewItem =~ /^kvKey/",
+          "group": "9_danger@1"
+        },
+        {
+          "command": "nats.kvPurgeKey",
+          "when": "view == nats.explorer && viewItem =~ /^kvKey/",
+          "group": "9_danger@2"
+        },
+        {
+          "command": "nats.createObjBucket",
+          "when": "view == nats.explorer && viewItem == folder.obj",
+          "group": "inline@1"
+        },
+        {
+          "command": "nats.createObjBucket",
+          "when": "view == nats.explorer && viewItem == folder.obj",
+          "group": "1_create@1"
+        },
+        {
+          "command": "nats.objUpload",
+          "when": "view == nats.explorer && viewItem == objBucket",
+          "group": "inline@1"
+        },
+        {
+          "command": "nats.objUpload",
+          "when": "view == nats.explorer && viewItem == objBucket",
+          "group": "1_edit@1"
+        },
+        {
+          "command": "nats.objBucketInfo",
+          "when": "view == nats.explorer && viewItem == objBucket",
+          "group": "1_edit@2"
+        },
+        {
+          "command": "nats.copyName",
+          "when": "view == nats.explorer && viewItem == objBucket",
+          "group": "1_edit@3"
+        },
+        {
+          "command": "nats.deleteObjBucket",
+          "when": "view == nats.explorer && viewItem == objBucket",
+          "group": "9_danger@1"
+        },
+        {
+          "command": "nats.objDownload",
+          "when": "view == nats.explorer && viewItem == object",
+          "group": "inline@1"
+        },
+        {
+          "command": "nats.objOpen",
+          "when": "view == nats.explorer && viewItem == object",
+          "group": "1_view@1"
+        },
+        {
+          "command": "nats.objInfo",
+          "when": "view == nats.explorer && viewItem == object",
+          "group": "1_view@2"
+        },
+        {
+          "command": "nats.objDownload",
+          "when": "view == nats.explorer && viewItem == object",
+          "group": "1_view@3"
+        },
+        {
+          "command": "nats.copyName",
+          "when": "view == nats.explorer && viewItem == object",
+          "group": "2_copy@1"
+        },
+        {
+          "command": "nats.objDelete",
+          "when": "view == nats.explorer && viewItem == object",
+          "group": "9_danger@1"
+        },
+        {
+          "command": "nats.serviceInfo",
+          "when": "view == nats.explorer && viewItem == service",
+          "group": "inline@1"
+        },
+        {
+          "command": "nats.serviceInfo",
+          "when": "view == nats.explorer && viewItem == service",
+          "group": "1_view@1"
+        },
+        {
+          "command": "nats.requestEndpoint",
+          "when": "view == nats.explorer && viewItem == serviceEndpoint",
+          "group": "inline@1"
+        },
+        {
+          "command": "nats.requestEndpoint",
+          "when": "view == nats.explorer && viewItem == serviceEndpoint",
+          "group": "1_view@1"
+        },
+        {
+          "command": "nats.subscribe",
+          "when": "view == nats.explorer && viewItem == serviceEndpoint",
+          "group": "1_view@2"
+        },
+        {
+          "command": "nats.openContextFile",
+          "when": "view == nats.explorer && viewItem =~ /^connection\\.[a-z]+\\.ctx/",
+          "group": "5_edit@1"
+        },
+        {
+          "command": "nats.saveAsManaged",
+          "when": "view == nats.explorer && viewItem =~ /^connection\\.[a-z]+\\.(ctx|ws|env)/",
+          "group": "5_edit@4"
+        },
+        {
+          "command": "nats.hideConnection",
+          "when": "view == nats.explorer && viewItem =~ /^connection\\.[a-z]+\\.(ctx|env)/",
+          "group": "5_edit@5"
+        },
+        {
+          "command": "nats.setEnvironment",
+          "when": "view == nats.explorer && viewItem =~ /^connection\\./",
+          "group": "6_safety@1"
+        },
+        {
+          "command": "nats.toggleReadOnly",
+          "when": "view == nats.explorer && viewItem =~ /^connection\\./",
+          "group": "6_safety@2"
+        },
+        {
+          "command": "nats.toggleAutoConnect",
+          "when": "view == nats.explorer && viewItem =~ /^connection\\./",
+          "group": "6_safety@3"
+        },
+        {
+          "command": "nats.openTerminal",
+          "when": "view == nats.explorer && viewItem =~ /^connection\\./",
+          "group": "3_info@2"
+        },
+        {
+          "command": "nats.whoAmI",
+          "when": "view == nats.explorer && viewItem =~ /^connection\\.connected/",
+          "group": "3_info@3"
+        },
+        {
+          "command": "nats.runHealthCheck",
+          "when": "view == nats.explorer && viewItem =~ /^connection\\.connected/",
+          "group": "1_conn@2"
+        },
+        {
+          "command": "nats.openTopology",
+          "when": "view == nats.explorer && viewItem =~ /^connection\\.connected/",
+          "group": "1_conn@3"
+        },
+        {
+          "command": "nats.openCluster",
+          "when": "view == nats.explorer && viewItem =~ /^connection\\.connected/",
+          "group": "1_conn@4"
+        },
+        {
+          "command": "nats.exportConfig",
+          "when": "view == nats.explorer && viewItem =~ /^connection\\.connected/",
+          "group": "7_gitops@1"
+        },
+        {
+          "command": "nats.openStreamDashboard",
+          "when": "view == nats.explorer && viewItem == stream",
+          "group": "inline@0"
+        },
+        {
+          "command": "nats.openStreamDashboard",
+          "when": "view == nats.explorer && viewItem == stream",
+          "group": "1_view@0"
+        },
+        {
+          "command": "nats.copyCliCommand",
+          "when": "view == nats.explorer && viewItem =~ /^(stream|consumer|kvBucket|objBucket)/",
+          "group": "8_copy@1"
+        },
+        {
+          "command": "nats.pauseConsumer",
+          "when": "view == nats.explorer && viewItem == consumer",
+          "group": "5_ops@1"
+        },
+        {
+          "command": "nats.resumeConsumer",
+          "when": "view == nats.explorer && viewItem == consumer",
+          "group": "5_ops@2"
+        },
+        {
+          "command": "nats.resetConsumer",
+          "when": "view == nats.explorer && viewItem == consumer",
+          "group": "5_ops@3"
+        },
+        {
+          "command": "nats.kvImport",
+          "when": "view == nats.explorer && viewItem =~ /^kvBucket/",
+          "group": "2_edit@5"
+        },
+        {
+          "command": "nats.kvExport",
+          "when": "view == nats.explorer && viewItem =~ /^kvBucket/",
+          "group": "2_edit@6"
+        },
+        {
+          "command": "nats.browseSubject",
+          "when": "view == nats.explorer && viewItem =~ /^subject(Folder)?$/",
+          "group": "inline@1"
+        },
+        {
+          "command": "nats.serverDetails",
+          "when": "view == nats.explorer && viewItem == sysServer",
+          "group": "inline@1"
+        },
+        {
+          "command": "nats.healthFix",
+          "when": "view == nats.health && viewItem =~ /^healthFinding\\.fixable/",
+          "group": "inline@1"
+        },
+        {
+          "command": "nats.runHealthCheck",
+          "when": "view == nats.health && viewItem == healthConnection",
+          "group": "inline@1"
+        },
+        {
+          "command": "nats.openHealthDashboard",
+          "when": "view == nats.health && viewItem == healthConnection",
+          "group": "inline@2"
+        },
+        {
+          "command": "nats.openCluster",
+          "when": "view == nats.explorer && viewItem == folder.servers",
+          "group": "inline@1"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "nats.refreshNode",
+          "when": "false"
+        },
+        {
+          "command": "nats.editConnection",
+          "when": "false"
+        },
+        {
+          "command": "nats.duplicateConnection",
+          "when": "false"
+        },
+        {
+          "command": "nats.streamInfo",
+          "when": "false"
+        },
+        {
+          "command": "nats.editStreamConfig",
+          "when": "false"
+        },
+        {
+          "command": "nats.purgeStream",
+          "when": "false"
+        },
+        {
+          "command": "nats.deleteStream",
+          "when": "false"
+        },
+        {
+          "command": "nats.publishToStream",
+          "when": "false"
+        },
+        {
+          "command": "nats.createConsumer",
+          "when": "false"
+        },
+        {
+          "command": "nats.consumerInfo",
+          "when": "false"
+        },
+        {
+          "command": "nats.editConsumerConfig",
+          "when": "false"
+        },
+        {
+          "command": "nats.deleteConsumer",
+          "when": "false"
+        },
+        {
+          "command": "nats.openConsumerLab",
+          "when": "false"
+        },
+        {
+          "command": "nats.deleteKvBucket",
+          "when": "false"
+        },
+        {
+          "command": "nats.kvBucketInfo",
+          "when": "false"
+        },
+        {
+          "command": "nats.kvAddKey",
+          "when": "false"
+        },
+        {
+          "command": "nats.kvOpenKey",
+          "when": "false"
+        },
+        {
+          "command": "nats.kvDeleteKey",
+          "when": "false"
+        },
+        {
+          "command": "nats.kvPurgeKey",
+          "when": "false"
+        },
+        {
+          "command": "nats.kvKeyHistory",
+          "when": "false"
+        },
+        {
+          "command": "nats.kvFilterKeys",
+          "when": "false"
+        },
+        {
+          "command": "nats.kvCopyKey",
+          "when": "false"
+        },
+        {
+          "command": "nats.kvCopyValue",
+          "when": "false"
+        },
+        {
+          "command": "nats.deleteObjBucket",
+          "when": "false"
+        },
+        {
+          "command": "nats.objBucketInfo",
+          "when": "false"
+        },
+        {
+          "command": "nats.objUpload",
+          "when": "false"
+        },
+        {
+          "command": "nats.objDownload",
+          "when": "false"
+        },
+        {
+          "command": "nats.objOpen",
+          "when": "false"
+        },
+        {
+          "command": "nats.objInfo",
+          "when": "false"
+        },
+        {
+          "command": "nats.objDelete",
+          "when": "false"
+        },
+        {
+          "command": "nats.serviceInfo",
+          "when": "false"
+        },
+        {
+          "command": "nats.requestEndpoint",
+          "when": "false"
+        },
+        {
+          "command": "nats.copyName",
+          "when": "false"
+        },
+        {
+          "command": "nats.runPlaybookBlock",
+          "when": "false"
+        },
+        {
+          "command": "nats.refreshInfoDoc",
+          "when": "resourceScheme == nats-info"
+        },
+        {
+          "command": "nats.setPlaybookConnection",
+          "when": "editorLangId == nats-playbook"
+        },
+        {
+          "command": "nats.healthFix",
+          "when": "false"
+        },
+        {
+          "command": "nats.browseSubject",
+          "when": "false"
+        },
+        {
+          "command": "nats.serverDetails",
+          "when": "false"
+        },
+        {
+          "command": "nats.openContextFile",
+          "when": "false"
+        },
+        {
+          "command": "nats.hideConnection",
+          "when": "false"
+        },
+        {
+          "command": "nats.saveAsManaged",
+          "when": "false"
+        },
+        {
+          "command": "nats.pauseConsumer",
+          "when": "false"
+        },
+        {
+          "command": "nats.resumeConsumer",
+          "when": "false"
+        },
+        {
+          "command": "nats.resetConsumer",
+          "when": "false"
+        },
+        {
+          "command": "nats.copyCliCommand",
+          "when": "false"
+        },
+        {
+          "command": "nats.kvImport",
+          "when": "false"
+        },
+        {
+          "command": "nats.kvExport",
+          "when": "false"
+        },
+        {
+          "command": "nats.toggleAutoConnect",
+          "when": "false"
+        },
+        {
+          "command": "nats.gitops.selectTarget",
+          "when": "false"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "nats.applyConfigFile",
+          "when": "resourceFilename =~ /\\.(stream|consumer|kv)\\.json$/",
+          "group": "9_nats@1"
+        },
+        {
+          "command": "nats.compareConfigFile",
+          "when": "resourceFilename =~ /\\.(stream|consumer|kv)\\.json$/",
+          "group": "9_nats@2"
+        },
+        {
+          "command": "nats.planConfigFolder",
+          "when": "explorerResourceIsFolder",
+          "group": "9_nats@3"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "NATS",
+      "properties": {
+        "nats.explorer.showInternalStreams": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show the streams backing KV buckets (KV_*) and Object Stores (OBJ_*) in the Streams folder."
+        },
+        "nats.kv.keySeparator": {
+          "type": "string",
+          "default": ".",
+          "description": "Character used to group KV keys into folders in the explorer tree (NATS subjects use '.'). Set to an empty string for a flat list."
+        },
+        "nats.kv.maxKeys": {
+          "type": "number",
+          "default": 5000,
+          "minimum": 1,
+          "description": "Maximum number of keys loaded per bucket in the explorer tree and KV Browser."
+        },
+        "nats.kv.prettyPrintJson": {
+          "type": "boolean",
+          "default": true,
+          "description": "Pretty-print compact JSON values when opening a KV key. On save, values that were compact are stored compact again."
+        },
+        "nats.messageBrowser.pageSize": {
+          "type": "number",
+          "default": 50,
+          "minimum": 1,
+          "maximum": 1000,
+          "description": "Number of messages per page in the Message Browser."
+        },
+        "nats.liveTail.maxMessages": {
+          "type": "number",
+          "default": 2000,
+          "minimum": 10,
+          "description": "Maximum number of messages kept in a Live Tail panel (older messages are dropped)."
+        },
+        "nats.dashboard.refreshInterval": {
+          "type": "number",
+          "default": 2000,
+          "minimum": 500,
+          "description": "Server, stream and cluster dashboard polling interval in milliseconds."
+        },
+        "nats.request.timeout": {
+          "type": "number",
+          "default": 5000,
+          "minimum": 100,
+          "description": "Default request/reply timeout in milliseconds."
+        },
+        "nats.confirmDestructiveActions": {
+          "type": "boolean",
+          "default": true,
+          "description": "Ask for confirmation before deleting or purging streams, consumers, buckets, keys and objects."
+        },
+        "nats.objectStore.maxPreviewBytes": {
+          "type": "number",
+          "default": 5242880,
+          "description": "Objects larger than this many bytes are not opened in an editor (download them instead)."
+        },
+        "nats.contexts.autoDiscover": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show NATS CLI contexts (nats context ls) in the explorer automatically and keep them in sync with the context files."
+        },
+        "nats.contexts.directory": {
+          "type": "string",
+          "default": "",
+          "description": "NATS CLI context directory. Empty = $XDG_CONFIG_HOME/nats/context or ~/.config/nats/context."
+        },
+        "nats.connections": {
+          "type": "array",
+          "default": [],
+          "scope": "resource",
+          "markdownDescription": "Connections shared with your team through workspace settings (no secrets — passwords, tokens and seeds are prompted once and stored in the OS keychain). Each entry: `name`, `servers`, optional `auth` (`kind`: none | userpass | token | creds | nkey, `username`, `credsFile`, `nkeyFile`), `tls`, `monitorUrl`, `environment` (dev | test | staging | prod), `readOnly`.",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "servers"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "servers": {
+                "type": [
+                  "array",
+                  "string"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
+              "auth": {
+                "type": "object"
+              },
+              "tls": {
+                "type": "object"
+              },
+              "monitorUrl": {
+                "type": "string"
+              },
+              "environment": {
+                "type": "string",
+                "enum": [
+                  "dev",
+                  "test",
+                  "staging",
+                  "prod"
+                ]
+              },
+              "readOnly": {
+                "type": "boolean"
+              },
+              "jsDomain": {
+                "type": "string"
+              },
+              "inboxPrefix": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "nats.connections.fromEnvironment": {
+          "type": "boolean",
+          "default": true,
+          "description": "Offer a connection built from NATS_URL / NATS_USER / NATS_PASSWORD / NATS_CREDS / NATS_NKEY when NATS_URL is set."
+        },
+        "nats.connections.restoreOnStartup": {
+          "type": "boolean",
+          "default": false,
+          "description": "Reconnect the connections that were open when VS Code was closed."
+        },
+        "nats.explorer.autoRefresh": {
+          "type": "boolean",
+          "default": true,
+          "description": "Refresh the explorer when JetStream advisories report created, updated or deleted streams and consumers."
+        },
+        "nats.explorer.statsRefreshInterval": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "description": "Refresh stream and consumer statistics in the explorer every N seconds (0 = off)."
+        },
+        "nats.explorer.maxSubjects": {
+          "type": "number",
+          "default": 2000,
+          "minimum": 10,
+          "description": "Maximum number of subjects listed under a stream's Subjects node and in the stream dashboard."
+        },
+        "nats.health.autoRun": {
+          "type": "boolean",
+          "default": true,
+          "description": "Run a health check automatically after connecting."
+        },
+        "nats.health.intervalMinutes": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "description": "Re-run health checks every N minutes for live connections (0 = off)."
+        },
+        "nats.health.pendingWarning": {
+          "type": "number",
+          "default": 10000,
+          "description": "Warn when a consumer has more unprocessed (pending) messages than this."
+        },
+        "nats.health.ackPendingRatio": {
+          "type": "number",
+          "default": 0.9,
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Warn when a consumer's ack pending count reaches this fraction of max_ack_pending."
+        },
+        "nats.health.storageWarningRatio": {
+          "type": "number",
+          "default": 0.8,
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Warn when a stream or account uses this fraction of its storage / message limits."
+        },
+        "nats.health.storageErrorRatio": {
+          "type": "number",
+          "default": 0.95,
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Report an error at this fraction of a storage / message limit."
+        },
+        "nats.health.rttWarningMs": {
+          "type": "number",
+          "default": 100,
+          "description": "Warn when the client ↔ server round-trip time exceeds this many milliseconds."
+        },
+        "nats.overview.refreshInterval": {
+          "type": "number",
+          "default": 3000,
+          "minimum": 1000,
+          "description": "Refresh interval (ms) of the Overview sidebar and Home dashboard."
+        }
+      }
+    },
+    "jsonValidation": [
+      {
+        "fileMatch": [
+          "*.stream.json"
+        ],
+        "url": "./schemas/stream.schema.json"
+      },
+      {
+        "fileMatch": [
+          "*.consumer.json"
+        ],
+        "url": "./schemas/consumer.schema.json"
+      },
+      {
+        "fileMatch": [
+          "*.kv.json"
+        ],
+        "url": "./schemas/kv.schema.json"
+      }
+    ],
+    "walkthroughs": [
+      {
+        "id": "nats.gettingStarted",
+        "title": "Get started with NATS Admin",
+        "description": "Connect, protect production, explore streams and KV, check health and manage JetStream as code.",
+        "steps": [
+          {
+            "id": "connect",
+            "title": "Connect to NATS",
+            "description": "Contexts, NATS_URL, workspace connections and local servers are picked up automatically.\n[Open the NATS view](command:nats.explorer.focus)\n[Add Connection](command:nats.addConnection)",
+            "media": {
+              "markdown": "media/walkthrough/connect.md"
+            },
+            "completionEvents": [
+              "onCommand:nats.connect",
+              "onCommand:nats.addConnection",
+              "onCommand:nats.connectLocal"
+            ]
+          },
+          {
+            "id": "safety",
+            "title": "Label environments & protect production",
+            "description": "Mark connections dev / test / staging / prod and make production read-only.\n[Set Environment…](command:nats.setEnvironment)",
+            "media": {
+              "markdown": "media/walkthrough/safety.md"
+            },
+            "completionEvents": [
+              "onCommand:nats.setEnvironment",
+              "onCommand:nats.toggleReadOnly"
+            ]
+          },
+          {
+            "id": "explore",
+            "title": "Explore streams and Key-Value",
+            "description": "Dashboards, the KV Browser, the Message Browser and the topology graph.\n[Open KV Browser](command:nats.openKvBrowser)\n[Open Topology](command:nats.openTopology)",
+            "media": {
+              "markdown": "media/walkthrough/explore.md"
+            },
+            "completionEvents": [
+              "onCommand:nats.openKvBrowser",
+              "onCommand:nats.browseMessages",
+              "onCommand:nats.openStreamDashboard",
+              "onCommand:nats.openTopology"
+            ]
+          },
+          {
+            "id": "health",
+            "title": "Run a health check",
+            "description": "Find misconfigurations and lagging consumers before they page you.\n[Run Health Check](command:nats.runHealthCheck)",
+            "media": {
+              "markdown": "media/walkthrough/health.md"
+            },
+            "completionEvents": [
+              "onCommand:nats.runHealthCheck",
+              "onCommand:nats.openHealthDashboard"
+            ]
+          },
+          {
+            "id": "gitops",
+            "title": "Manage JetStream as code",
+            "description": "Export configs to your repo, detect drift and apply with a plan.\n[Export JetStream Config](command:nats.exportConfig)",
+            "media": {
+              "markdown": "media/walkthrough/gitops.md"
+            },
+            "completionEvents": [
+              "onCommand:nats.exportConfig",
+              "onCommand:nats.planConfigFolder"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build -- --production",
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "typecheck": "tsc -p . --noEmit",
+    "test": "node esbuild.mjs --tests && node --test --test-reporter=spec out/test/*.test.js",
+    "test:integration": "node esbuild.mjs && node esbuild.mjs --integration && node out/test-integration/runTests.js",
+    "package": "vsce package --no-dependencies",
+    "package:local": "vsce package --no-dependencies --allow-missing-repository --no-rewrite-relative-links"
+  },
+  "dependencies": {
+    "@msgpack/msgpack": "^3.1.3",
+    "@nats-io/jetstream": "3.5.0",
+    "@nats-io/kv": "3.5.0",
+    "@nats-io/nats-core": "3.5.0",
+    "@nats-io/obj": "3.5.0",
+    "@nats-io/services": "3.5.0",
+    "@nats-io/transport-node": "3.5.0",
+    "@vscode/codicons": "^0.0.46-24",
+    "preact": "^11.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "@types/vscode": "1.95.0",
+    "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^4.1.1",
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2"
+  },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "Connections defined in workspace settings (nats.connections) are ignored until the workspace is trusted.",
+      "restrictedConfigurations": [
+        "nats.connections"
+      ]
+    },
+    "virtualWorkspaces": false
+  },
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#0d3f78",
+    "theme": "dark"
+  },
+  "qna": false,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/grok-rs/nats-admin.git"
+  },
+  "bugs": {
+    "url": "https://github.com/grok-rs/nats-admin/issues"
+  },
+  "homepage": "https://github.com/grok-rs/nats-admin#readme"
+}

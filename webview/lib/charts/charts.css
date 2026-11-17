@@ -1,0 +1,1251 @@
+/* Chart chrome (vz-*). Colour roles come from tokens in lib/styles.css:
+   --series-1..8 / --series-other, --vz-grid, --vz-axis, --vz-surface, --vz-empty, tones. */
+
+.vz-chart {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.vz-plot {
+  position: relative;
+  min-width: 0;
+  width: 100%;
+  border-radius: var(--radius-sm);
+}
+
+.vz-plot:focus-visible,
+.vz-spark:focus-visible {
+  outline: 1px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.vz-svg {
+  display: block;
+  overflow: visible;
+}
+
+.vz-stale {
+  opacity: 0.55;
+  transition: opacity 0.2s;
+}
+
+/* ---- axes & grid ---- */
+
+.vz-gridline {
+  stroke: var(--vz-grid);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+
+.vz-baseline {
+  stroke: var(--vz-axis);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+
+.vz-tick {
+  fill: var(--vz-muted);
+  font-size: 10.5px;
+  font-family: var(--vscode-font-family);
+  font-variant-numeric: tabular-nums;
+}
+
+.vz-mono {
+  font-family: var(--mono);
+}
+
+.vz-axis-caption {
+  fill: var(--vz-muted);
+  font-size: 10px;
+  font-family: var(--vscode-font-family);
+}
+
+.vz-value-label {
+  fill: var(--vz-fg);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- marks ---- */
+
+.vz-line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.vz-line-thin {
+  stroke-width: 1.5;
+}
+
+.vz-dashed {
+  stroke-dasharray: 5 4;
+}
+
+.vz-area {
+  fill-opacity: 0.12;
+  stroke: none;
+}
+
+.vz-dot {
+  stroke: var(--vz-surface);
+  stroke-width: 2;
+}
+
+.vz-dot-sm {
+  stroke-width: 1.5;
+}
+
+.vz-bar {
+  transition: filter 0.12s;
+}
+
+.vz-hit,
+.vz-hit-col {
+  fill: transparent;
+}
+
+.vz-hit {
+  cursor: crosshair;
+}
+
+.vz-crosshair {
+  stroke: var(--vz-crosshair);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+  pointer-events: none;
+}
+
+.vz-hover {
+  pointer-events: none;
+}
+
+.vz-threshold line {
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+  shape-rendering: crispEdges;
+}
+
+.vz-threshold-label,
+.vz-marker-label {
+  fill: var(--vz-muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.vz-marker line {
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+
+.vz-bar-col {
+  outline: none;
+}
+
+.vz-bar-col.vz-active .vz-bar,
+.vz-bar-col:focus-visible .vz-bar {
+  filter: brightness(1.18) saturate(1.05);
+}
+
+.vz-bar-col.vz-active .vz-hit-col {
+  fill: var(--vz-hover-col);
+}
+
+.vz-bar-col:focus-visible .vz-hit-col {
+  fill: var(--vz-hover-col);
+  stroke: var(--focus);
+  stroke-width: 1;
+}
+
+.vz-clickable {
+  cursor: pointer;
+}
+
+.vz-cat-label {
+  fill: var(--vz-muted);
+}
+
+.vz-empty-msg {
+  position: absolute;
+  inset: 0 0 20px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0 16px;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  pointer-events: none;
+}
+
+.vz-empty-inline {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  padding: var(--sp-5) 0;
+  text-align: center;
+}
+
+/* ---- tooltip ---- */
+
+.vz-tip {
+  position: absolute;
+  z-index: 20;
+  pointer-events: none;
+  transform: translate(12px, 0);
+  min-width: 96px;
+  max-width: 280px;
+  padding: 6px 8px;
+  border-radius: var(--radius);
+  border: 1px solid var(--vz-tip-border);
+  background: var(--vz-tip-bg);
+  color: var(--vz-tip-fg);
+  box-shadow: 0 2px 8px var(--vscode-widget-shadow, rgba(0, 0, 0, 0.36));
+  font-size: var(--fs-sm);
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.vz-tip-flip {
+  transform: translate(calc(-100% - 12px), 0);
+}
+
+.vz-tip-above {
+  transform: translate(-50%, -100%);
+}
+
+.vz-tip-above-start {
+  transform: translate(-12px, -100%);
+}
+
+.vz-tip-above-end {
+  transform: translate(calc(-100% + 12px), -100%);
+}
+
+.vz-tip-head {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  margin-bottom: 3px;
+  font-variant-numeric: tabular-nums;
+}
+
+.vz-tip-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vz-tip-row + .vz-tip-row {
+  margin-top: 2px;
+}
+
+.vz-tip-value {
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.vz-tip-label {
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vz-key {
+  flex: none;
+  display: inline-block;
+}
+
+.vz-key-line {
+  width: 10px;
+  height: 2px;
+  border-radius: 1px;
+}
+
+.vz-key-rect {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.vz-key-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.vz-dim {
+  opacity: 0.6;
+}
+
+/* ---- legend ---- */
+
+.vz-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  font-size: var(--fs-sm);
+  min-width: 0;
+}
+
+.vz-legend-v {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap: 3px;
+}
+
+.vz-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--vscode-foreground);
+  padding: 1px 0;
+}
+
+.vz-legend-btn {
+  font: inherit;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  padding: 1px 4px;
+  margin: 0 -4px;
+}
+
+.vz-legend-btn:hover {
+  background: var(--hover);
+}
+
+.vz-legend-btn:focus-visible {
+  outline: 1px solid var(--focus);
+  outline-offset: 0;
+}
+
+.vz-legend-btn.vz-off {
+  color: var(--muted);
+}
+
+.vz-legend-btn.vz-off .vz-swatch {
+  opacity: 0.35;
+}
+
+.vz-legend-btn.vz-off .vz-legend-label {
+  text-decoration: line-through;
+}
+
+.vz-legend-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vz-legend-value {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.vz-swatch {
+  flex: none;
+  display: inline-block;
+  background: var(--c);
+}
+
+.vz-swatch-rect {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+}
+
+.vz-swatch-line {
+  width: 12px;
+  height: 2px;
+  border-radius: 1px;
+}
+
+.vz-swatch-dashed {
+  background: repeating-linear-gradient(90deg, var(--c) 0 4px, transparent 4px 6px);
+}
+
+.vz-swatch-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/* ---- sparkline ---- */
+
+.vz-spark {
+  position: relative;
+  min-width: 0;
+  width: 100%;
+}
+
+/* ---- meter ---- */
+
+.vz-meter {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  --track-h: 8px;
+}
+
+.vz-meter-sm {
+  --track-h: 6px;
+}
+
+.vz-meter-xs {
+  --track-h: 4px;
+}
+
+.vz-meter-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  font-size: var(--fs-sm);
+  min-width: 0;
+}
+
+.vz-meter-label {
+  color: var(--vscode-foreground);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vz-meter-value {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.vz-meter-track {
+  position: relative;
+  height: var(--track-h);
+  border-radius: calc(var(--track-h) / 2);
+  background: color-mix(in srgb, var(--fill) 18%, transparent);
+  overflow: hidden;
+}
+
+.vz-meter-fill {
+  height: 100%;
+  border-radius: calc(var(--track-h) / 2);
+  background: var(--fill);
+  min-width: 2px;
+  transition: width 0.3s ease;
+}
+
+.vz-meter-tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--vz-surface);
+  opacity: 0.85;
+}
+
+.vz-meter-unlimited .vz-meter-track {
+  background: repeating-linear-gradient(135deg, var(--vz-empty) 0 4px, transparent 4px 8px);
+}
+
+.vz-meter-inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.vz-meter-inline .vz-meter-track {
+  flex: 1;
+  min-width: 40px;
+}
+
+.vz-meter-inline .vz-meter-value {
+  font-size: var(--fs-xs);
+}
+
+/* ---- gauge ---- */
+
+.vz-gauge {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 100%;
+}
+
+.vz-gauge-dial {
+  position: relative;
+  width: 100%;
+}
+
+.vz-gauge-track {
+  fill: color-mix(in srgb, var(--fill) 16%, transparent);
+}
+
+.vz-gauge-fill {
+  fill: var(--fill);
+}
+
+.vz-gauge-tick {
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.vz-gauge-tick-warn {
+  stroke: var(--warn);
+}
+
+.vz-gauge-tick-danger {
+  stroke: var(--danger);
+}
+
+.vz-gauge-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  text-align: center;
+  line-height: 1.15;
+}
+
+.vz-gauge-value {
+  font-weight: var(--fw-semibold);
+  color: var(--vscode-foreground);
+}
+
+.vz-gauge-sub {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vz-gauge-label {
+  margin-top: 4px;
+  font-size: var(--fs-sm);
+  color: var(--vscode-foreground);
+  text-align: center;
+}
+
+/* ---- bar list ---- */
+
+.vz-barlist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  container-type: inline-size;
+  min-width: 0;
+}
+
+.vz-bar-li {
+  min-width: 0;
+}
+
+.vz-bar-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "label value"
+    "bar bar";
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 3px;
+  width: 100%;
+  padding: 3px 4px;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: var(--fs-sm);
+  color: var(--vscode-foreground);
+  text-align: left;
+  background: transparent;
+  border: none;
+}
+
+.vz-bar-btn {
+  cursor: pointer;
+}
+
+.vz-bar-btn:hover {
+  background: var(--hover);
+}
+
+.vz-bar-btn:focus-visible {
+  outline: 1px solid var(--focus);
+  outline-offset: -1px;
+}
+
+.vz-bar-btn.vz-selected {
+  background: var(--inactive-selected);
+}
+
+.vz-bar-label {
+  grid-area: label;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.vz-bar-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vz-bar-secondary {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}
+
+.vz-bar-track {
+  grid-area: bar;
+  height: 6px;
+  border-radius: 0 3px 3px 0;
+  background: var(--vz-track);
+  overflow: hidden;
+}
+
+.vz-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 0 3px 3px 0;
+  min-width: 2px;
+  transition: width 0.3s ease;
+}
+
+.vz-bar-value {
+  grid-area: value;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.vz-bar-share {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+
+@container (min-width: 440px) {
+  .vz-bar-row {
+    grid-template-columns: minmax(90px, 32%) minmax(0, 1fr) auto;
+    grid-template-areas: "label bar value";
+  }
+
+  .vz-bar-track {
+    height: 8px;
+  }
+
+  .vz-bar-value {
+    min-width: 64px;
+  }
+}
+
+/* ---- segment bar ---- */
+
+.vz-segbar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
+.vz-seg-track {
+  position: relative;
+  display: flex;
+  gap: 2px;
+  min-width: 0;
+}
+
+.vz-segbar-thin .vz-seg-track {
+  height: 8px;
+}
+
+.vz-segbar-dense .vz-seg-track {
+  height: 4px;
+}
+
+.vz-segbar-tall .vz-seg-track {
+  height: 28px;
+}
+
+.vz-seg {
+  min-width: 2px;
+  outline: none;
+  display: flex;
+  align-items: center;
+  overflow: visible;
+  transition: filter 0.12s;
+}
+
+.vz-segbar-thin .vz-seg,
+.vz-segbar-dense .vz-seg {
+  border-radius: 1px;
+}
+
+.vz-segbar-thin .vz-seg:first-child,
+.vz-segbar-dense .vz-seg:first-child {
+  border-top-left-radius: 999px;
+  border-bottom-left-radius: 999px;
+}
+
+.vz-segbar-thin .vz-seg:last-of-type,
+.vz-segbar-dense .vz-seg:last-of-type {
+  border-top-right-radius: 999px;
+  border-bottom-right-radius: 999px;
+}
+
+.vz-segbar-tall .vz-seg {
+  border-radius: 4px;
+}
+
+.vz-seg.vz-active,
+.vz-seg:focus-visible {
+  filter: brightness(1.15);
+}
+
+.vz-seg:focus-visible {
+  box-shadow: 0 0 0 1px var(--vz-surface), 0 0 0 2px var(--focus);
+}
+
+.vz-seg-rest {
+  background: var(--vz-track);
+}
+
+.vz-seg-text {
+  padding: 0 6px;
+  font-size: 11px;
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.vz-seg-empty {
+  flex: 1;
+  border-radius: 999px;
+  background: var(--vz-track);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---- donut ---- */
+
+.vz-donut {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-6);
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.vz-donut-ring {
+  position: relative;
+  flex: none;
+}
+
+.vz-arc {
+  outline: none;
+  transition: d 0.15s;
+}
+
+.vz-arc:focus-visible {
+  stroke: var(--focus);
+  stroke-width: 1.5;
+}
+
+.vz-donut-empty {
+  fill: none;
+  stroke: var(--vz-track);
+}
+
+.vz-donut-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+  line-height: 1.2;
+}
+
+.vz-donut-value {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+}
+
+.vz-donut-label {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vz-donut .vz-legend {
+  flex: 1;
+  min-width: 140px;
+}
+
+.vz-donut .vz-legend-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+/* ---- treemap ---- */
+
+.vz-treemap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
+.vz-crumbs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  font-size: var(--fs-sm);
+  min-height: 22px;
+}
+
+.vz-crumb-item {
+  display: inline-flex;
+  align-items: center;
+}
+
+.vz-crumb-sep {
+  font-size: 12px !important;
+  color: var(--muted);
+}
+
+.vz-crumb {
+  font: inherit;
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 1px 4px;
+  border-radius: var(--radius-sm);
+}
+
+.vz-crumb:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.vz-crumb:disabled {
+  color: var(--vscode-foreground);
+  cursor: default;
+}
+
+.vz-crumb:focus-visible {
+  outline: 1px solid var(--focus);
+}
+
+.vz-crumb-total {
+  margin-left: auto;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.vz-tm-area {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+}
+
+.vz-tile {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px solid var(--vz-surface);
+  border-radius: 3px;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: var(--vscode-foreground);
+  background: color-mix(in srgb, var(--tile) var(--wash), var(--vz-surface));
+  box-shadow: inset 2px 0 0 var(--tile);
+  cursor: pointer;
+  overflow: hidden;
+  text-align: left;
+  transition: background 0.12s;
+}
+
+.vz-tile:hover {
+  background: color-mix(in srgb, var(--tile) calc(var(--wash) + 14%), var(--vz-surface));
+}
+
+.vz-tile:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+  z-index: 2;
+}
+
+.vz-tile-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px 6px 4px 8px;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.vz-tile-label {
+  font-size: var(--fs-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vz-tile-value {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vz-tile-parent .vz-tile-label::after {
+  content: " ›";
+  color: var(--muted);
+}
+
+/* ---- activity strip / heatmap ---- */
+
+.vz-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.vz-strip-cells {
+  position: relative;
+  display: flex;
+  min-width: 0;
+}
+
+.vz-cell {
+  flex: 1 1 0;
+  min-width: 1px;
+  border-radius: 2px;
+  outline: none;
+}
+
+.vz-cell.vz-active,
+.vz-cell:focus-visible {
+  box-shadow: 0 0 0 1px var(--vz-surface), 0 0 0 2px var(--vscode-foreground);
+  position: relative;
+  z-index: 1;
+}
+
+.vz-cell:focus-visible {
+  box-shadow: 0 0 0 1px var(--vz-surface), 0 0 0 2px var(--focus);
+}
+
+.vz-cell-null {
+  background: repeating-linear-gradient(135deg, var(--vz-empty) 0 3px, transparent 3px 6px);
+}
+
+.vz-strip-axis {
+  position: relative;
+  height: 14px;
+  font-size: 10px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.vz-strip-tick {
+  position: absolute;
+  top: 0;
+  white-space: nowrap;
+}
+
+.vz-heatmap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.vz-hm-grid {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.vz-hm-row {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.vz-hm-label {
+  flex: none;
+  font-size: 11px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.vz-hm-label.mono {
+  font-size: 11px;
+}
+
+.vz-hm-cells {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+.vz-hm-cells .vz-cell {
+  flex: none;
+}
+
+.vz-hm-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.vz-scale {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 10px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.vz-scale-step {
+  width: 14px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.vz-scale-label {
+  padding: 0 4px;
+}
+
+/* ---- status ---- */
+
+.vz-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.vz-status-label {
+  font-size: var(--fs-sm);
+}
+
+.vz-dot-status {
+  position: relative;
+  display: inline-block;
+  flex: none;
+  border-radius: 50%;
+  background: var(--tone);
+}
+
+.vz-sdot-md {
+  width: 8px;
+  height: 8px;
+}
+
+.vz-sdot-sm {
+  width: 6px;
+  height: 6px;
+}
+
+.vz-tone-ok {
+  --tone: var(--ok);
+}
+
+.vz-tone-warn {
+  --tone: var(--warn);
+}
+
+.vz-tone-danger {
+  --tone: var(--danger);
+}
+
+.vz-tone-info {
+  --tone: var(--info);
+}
+
+.vz-tone-neutral {
+  --tone: var(--tone-neutral);
+}
+
+.vz-tone-text-ok {
+  color: var(--ok);
+}
+
+.vz-tone-text-warn {
+  color: var(--warn);
+}
+
+.vz-tone-text-danger {
+  color: var(--danger);
+}
+
+.vz-tone-text-info {
+  color: var(--info);
+}
+
+.vz-tone-text-neutral {
+  color: var(--tone-neutral);
+}
+
+.vz-pulse::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1px solid var(--tone);
+  animation: vz-ping 1.8s ease-out infinite;
+}
+
+@keyframes vz-ping {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+.vz-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 8px 0 6px;
+  border-radius: var(--radius-pill);
+  font: inherit;
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+  color: var(--vscode-foreground);
+  background: color-mix(in srgb, var(--tone) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tone) 45%, transparent);
+}
+
+.vz-pill-sm {
+  height: 18px;
+  font-size: var(--fs-xs);
+  padding: 0 6px 0 4px;
+}
+
+.vz-pill-ok {
+  --tone: var(--ok);
+}
+
+.vz-pill-warn {
+  --tone: var(--warn);
+}
+
+.vz-pill-danger {
+  --tone: var(--danger);
+}
+
+.vz-pill-neutral {
+  --tone: var(--tone-neutral);
+}
+
+.vz-pill-icon {
+  color: var(--tone);
+  font-size: 14px !important;
+}
+
+.vz-pill-sm .vz-pill-icon {
+  font-size: 12px !important;
+}
+
+.vz-pill-score {
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  padding-left: 5px;
+  border-left: 1px solid color-mix(in srgb, var(--tone) 45%, transparent);
+}
+
+.vz-pill-btn {
+  cursor: pointer;
+}
+
+.vz-pill-btn:hover {
+  background: color-mix(in srgb, var(--tone) 22%, transparent);
+}
+
+.vz-pill-btn:focus-visible {
+  outline: 1px solid var(--focus);
+  outline-offset: 1px;
+}
+
+/* ---- table view twin ---- */
+
+.vz-table-wrap {
+  max-height: 260px;
+  overflow: auto;
+}
+
+.vz-th-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* ---- motion / forced colours ---- */
+
+@media (prefers-reduced-motion: reduce) {
+  .vz-pulse::after {
+    animation: none;
+  }
+
+  .vz-meter-fill,
+  .vz-bar-fill,
+  .vz-arc,
+  .vz-tile {
+    transition: none;
+  }
+}
+
+body.vscode-reduce-motion .vz-pulse::after {
+  animation: none;
+}
+
+@media (forced-colors: active) {
+  .vz-line {
+    stroke: CanvasText !important;
+  }
+
+  .vz-bar,
+  .vz-arc,
+  .vz-seg,
+  .vz-cell,
+  .vz-meter-fill,
+  .vz-bar-fill {
+    forced-color-adjust: none;
+  }
+}

@@ -1,0 +1,308 @@
+/* Stream Dashboard (sd-*). Layout and charts come from the design system (ds-*, vz-*). */
+
+.sd-pad {
+  padding: var(--sp-5) var(--sp-6) var(--sp-4);
+}
+
+/* ---- limits ---- */
+
+.sd-gauges {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  justify-items: center;
+  gap: var(--sp-5) var(--sp-4);
+  margin-bottom: var(--sp-3);
+}
+
+.sd-unset {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-3);
+  margin-top: var(--sp-2);
+}
+
+.sd-note {
+  display: inline-flex;
+  gap: var(--sp-3);
+  align-items: flex-start;
+  line-height: 1.4;
+}
+
+.sd-note .codicon {
+  flex: none;
+  margin-top: 1px;
+}
+
+.sd-callout {
+  display: flex;
+  gap: var(--sp-4);
+  align-items: flex-start;
+  padding: var(--sp-4) var(--sp-5);
+  border-radius: var(--radius);
+  background: var(--warn-bg);
+  border: 1px solid color-mix(in srgb, var(--warn) 40%, transparent);
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+}
+
+.sd-callout > .codicon {
+  color: var(--warn);
+  flex: none;
+  margin-top: 1px;
+}
+
+.sd-callout-danger {
+  background: var(--danger-bg);
+  border-color: color-mix(in srgb, var(--danger) 40%, transparent);
+}
+
+.sd-callout-danger > .codicon {
+  color: var(--danger);
+}
+
+/* ---- recent messages feed ---- */
+
+.sd-feed {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sd-feed > li + li {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.sd-feed-skel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-4) 0;
+}
+
+.sd-feed-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  width: 100%;
+  padding: var(--sp-3) var(--sp-6);
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.sd-feed-row:hover {
+  background: var(--hover);
+}
+
+.sd-feed-row:focus-visible {
+  outline: 1px solid var(--focus);
+  outline-offset: -1px;
+}
+
+.sd-feed-top,
+.sd-feed-bottom {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+
+.sd-feed-seq {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  flex: none;
+}
+
+.sd-feed-subject {
+  font-size: var(--mono-size);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1;
+}
+
+.sd-feed-time,
+.sd-feed-size {
+  margin-left: auto;
+  flex: none;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  display: inline-flex;
+  gap: var(--sp-4);
+  align-items: center;
+}
+
+.sd-feed-size .codicon {
+  font-size: 11px;
+}
+
+.sd-feed-preview {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1;
+}
+
+/* ---- subjects ---- */
+
+.sd-selection {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.sd-selection .mono {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- consumers table ---- */
+
+.sd-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-3);
+  white-space: nowrap;
+}
+
+.sd-consumer {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.sd-consumer-name {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
+.sd-consumer-name .mono {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sd-consumer-meta {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 320px;
+}
+
+.sd-actions {
+  display: inline-flex;
+  gap: var(--sp-1);
+  justify-content: flex-end;
+}
+
+.sd-table-foot {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-4) var(--sp-6);
+}
+
+.sd-peer {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-4);
+}
+
+/* ---- page-level guards ---- */
+
+/* KPI hint tooltips are anchored to their tile so the rightmost tile's tip cannot overflow. */
+.sd-page .ds-kpi .ds-infotip {
+  position: static;
+}
+
+.sd-page .ds-kpi .ds-infotip::after {
+  left: 8px;
+  right: 8px;
+  top: 30px;
+  width: auto;
+  max-width: none;
+  transform: none;
+}
+
+.sd-page .ds-body {
+  overflow-x: hidden;
+  /* Containing block for absolutely positioned descendants (e.g. StatusDot's .sr-only label):
+     without it they escape the scroll container and make the whole document scroll, header
+     and production banner included. */
+  position: relative;
+}
+
+/* Last poll failed while older data is still shown (dimmed). */
+.sd-stale-error {
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.sd-stale-error-text {
+  flex: 1 1 260px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.sd-stale-error-actions {
+  display: inline-flex;
+  gap: var(--sp-3);
+  flex: none;
+}
+
+.sd-counting {
+  margin: var(--sp-2) 0 var(--sp-4);
+}
+
+/* ---- charts that fill their card ---- */
+
+.sd-fill-wrap {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  min-height: 0;
+}
+
+.sd-fill {
+  position: relative;
+  flex: 1 1 auto;
+}
+
+.sd-fill-inner {
+  position: absolute;
+  inset: 0;
+}
+
+/* ---- responsive placement ---- */
+
+/* Let half-width side cards (limits, recent messages) pair up when the main charts go full width. */
+.sd-page .ds-grid.sd-dense {
+  grid-auto-flow: row dense;
+}
+
+@container ds-grid (max-width: 960px) {
+  .sd-page .ds-grid:not(.ds-grid-auto) > .sd-full-md {
+    grid-column: span 12;
+  }
+}

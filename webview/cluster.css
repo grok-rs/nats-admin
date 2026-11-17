@@ -1,0 +1,263 @@
+/* Cluster overview: cluster map, server cards. Theme tokens only; status colour always comes
+   with an icon or a label. */
+
+/* Design-system workaround: KPI InfoTip tooltips near the right edge widen .ds-body's scroll
+   area (horizontal scrollbar). Clip instead of scroll. */
+.ds-body {
+  overflow-x: clip;
+}
+
+.cl-notice p {
+  margin: 0 0 6px;
+  line-height: 1.5;
+}
+.cl-notice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.cl-howto {
+  color: var(--muted);
+}
+.cl-howto b {
+  color: var(--vscode-foreground);
+  font-weight: var(--fw-semibold);
+}
+
+/* ---- cluster map ------------------------------------------------------------------------ */
+
+.cl-map {
+  position: relative;
+  width: 100%;
+  min-height: 120px;
+}
+.cl-map svg {
+  display: block;
+  overflow: visible;
+}
+.cl-map-more {
+  position: absolute;
+  right: 4px;
+  bottom: 0;
+}
+.cl-cluster rect {
+  fill: color-mix(in srgb, var(--series-1) 5%, var(--surface-raised));
+  stroke: color-mix(in srgb, var(--series-1) 40%, var(--border));
+  stroke-width: 1;
+}
+.cl-cluster-remote rect {
+  fill: transparent;
+  /* --border is ~1.2:1 on the editor background: outlines need a stronger line to be seen */
+  stroke: color-mix(in srgb, var(--vscode-foreground) 45%, transparent);
+  stroke-dasharray: 6 4;
+}
+.cl-cluster-label {
+  fill: var(--vscode-foreground);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: var(--fw-semibold);
+}
+.cl-cluster-count {
+  fill: var(--muted);
+  font-size: 10.5px;
+}
+.cl-route {
+  stroke: color-mix(in srgb, var(--vscode-foreground) 28%, transparent);
+  stroke-width: 1.25;
+}
+.cl-route-hl {
+  stroke: var(--vscode-foreground);
+  stroke-width: 2;
+}
+.cl-gateway path {
+  fill: none;
+  stroke: var(--series-5);
+  stroke-width: 2.5;
+  stroke-dasharray: 8 5;
+}
+.cl-gateway text {
+  fill: var(--muted);
+  font-size: 10px;
+  paint-order: stroke;
+  stroke: var(--surface-raised);
+  stroke-width: 4px;
+}
+.cl-leaf-link {
+  stroke: color-mix(in srgb, var(--series-7) 70%, transparent);
+  stroke-dasharray: 2 3;
+  stroke-width: 1.25;
+}
+.cl-leaf rect {
+  fill: color-mix(in srgb, var(--series-7) 10%, var(--surface));
+  stroke: color-mix(in srgb, var(--series-7) 55%, var(--border));
+}
+.cl-leaf-glyph {
+  fill: var(--series-7);
+}
+.cl-leaf text {
+  fill: var(--vscode-foreground);
+  font-family: var(--mono);
+  font-size: 10.5px;
+}
+
+.cl-server {
+  cursor: pointer;
+}
+.cl-server:focus {
+  outline: none;
+}
+.cl-server-box {
+  fill: var(--surface);
+  stroke: var(--border);
+  stroke-width: 1;
+}
+.cl-server:hover .cl-server-box {
+  stroke: var(--vscode-foreground);
+}
+.cl-server-halo {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 2;
+}
+.cl-server:focus-visible .cl-server-halo,
+.cl-selected .cl-server-halo {
+  stroke: var(--focus);
+}
+.cl-connected .cl-server-box {
+  stroke: var(--series-1);
+  stroke-width: 2;
+}
+.cl-ghost .cl-server-box {
+  /* same fill as the cluster box: hides the route lines that end at the box centre */
+  fill: color-mix(in srgb, var(--series-1) 5%, var(--surface-raised));
+  stroke: color-mix(in srgb, var(--vscode-foreground) 45%, transparent);
+  stroke-dasharray: 4 3;
+}
+.cl-ghost .cl-server-name {
+  fill: var(--muted);
+}
+.cl-server-glyph {
+  fill: var(--muted);
+}
+.cl-connected .cl-server-glyph {
+  fill: var(--series-1);
+}
+.cl-tone-ok .cl-server-glyph {
+  fill: var(--ok);
+}
+.cl-tone-warn .cl-server-box {
+  stroke: var(--warn);
+}
+.cl-tone-danger .cl-server-box {
+  stroke: var(--danger);
+  stroke-width: 1.75;
+}
+.cl-tone-glyph.cl-tone-warn {
+  fill: var(--warn);
+}
+.cl-tone-glyph.cl-tone-danger {
+  fill: var(--danger);
+}
+.cl-leader-glyph {
+  fill: var(--series-4);
+}
+.cl-server-name {
+  fill: var(--vscode-foreground);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: var(--fw-semibold);
+}
+.cl-server-sub {
+  fill: var(--muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.cl-tip-hint {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border-subtle);
+  color: var(--muted);
+  font-size: var(--fs-2xs);
+}
+
+/* ---- server cards ----------------------------------------------------------------------- */
+
+.cl-card-wrap {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-radius: var(--radius-lg);
+  scroll-margin: 16px;
+}
+.cl-card-wrap > .ds-card {
+  flex: 1;
+}
+.cl-card-selected {
+  outline: 1px solid var(--focus);
+  outline-offset: 2px;
+}
+.cl-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.cl-issues {
+  list-style: none;
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: var(--radius);
+  background: var(--warn-bg);
+  font-size: var(--fs-sm);
+}
+.cl-issues-danger {
+  background: var(--danger-bg);
+}
+.cl-issues li {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.cl-gauges {
+  display: flex;
+  justify-content: space-around;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.cl-gauge-off {
+  width: 128px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+  min-height: 90px;
+  padding: 6px;
+  text-align: center;
+}
+.cl-trend {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cl-name-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.cl-name-cell .codicon {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+body.vscode-high-contrast .cl-cluster rect,
+body.vscode-high-contrast .cl-server:not(.cl-tone-warn):not(.cl-tone-danger):not(.cl-connected) .cl-server-box {
+  stroke: var(--vscode-contrastBorder, var(--border));
+}
+body.vscode-high-contrast .cl-route {
+  stroke: var(--vscode-foreground);
+}

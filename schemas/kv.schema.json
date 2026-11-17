@@ -1,0 +1,187 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "JetStream Key-Value bucket definition",
+  "markdownDescription": "A Key-Value bucket definition for NATS Admin's config-as-code (stored as the `KV_<bucket>` stream).\n\nFile name: `<BUCKET>.kv.json`. Only the bucket settings live here — export / import the **keys** with *Export Keys to JSON* / *Import Keys from JSON*.\n\nFields you omit keep their server value (or the default when the bucket is created).",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "markdownDescription": "Optional JSON schema reference (ignored when applying)."
+    },
+    "bucket": {
+      "type": "string",
+      "markdownDescription": "Bucket name. **Must match the file name** (`<bucket>.kv.json`). Letters, digits, `-` and `_` only.",
+      "pattern": "^[-\\w]+$",
+      "errorMessage": "Bucket names may only contain letters, digits, '-' and '_'"
+    },
+    "description": {
+      "type": "string",
+      "markdownDescription": "Short human description of the bucket's purpose."
+    },
+    "history": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 64,
+      "default": 1,
+      "markdownDescription": "Revisions kept per key (1–64), including the current value. Maps to the stream's `max_msgs_per_subject`.\n\n⚠ Lowering it removes older revisions."
+    },
+    "ttl": {
+      "markdownDescription": "How long a key lives after its last update. `0` = forever.\n\n**Milliseconds** as a number (`3600000`), or a duration string: `\"90s\"`, `\"30m\"`, `\"24h\"`, `\"7d\"`, `\"1h30m\"`. Maps to the stream's `max_age`.\n\n⚠ Lowering it expires keys that are older than the new TTL.",
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "markdownDescription": "Milliseconds; `0` = forever."
+        },
+        {
+          "type": "string",
+          "pattern": "^(\\d+(\\.\\d+)?(ms|s|m|h|d|w|y))+$",
+          "markdownDescription": "Duration with units: ms, s, m, h, d, w, y (e.g. `\"24h\"`, `\"1h30m\"`)."
+        }
+      ],
+      "default": 0,
+      "defaultSnippets": [
+        {
+          "label": "forever (0)",
+          "body": 0
+        },
+        {
+          "label": "1 hour",
+          "body": "1h"
+        },
+        {
+          "label": "24 hours",
+          "body": "24h"
+        },
+        {
+          "label": "7 days",
+          "body": "7d"
+        },
+        {
+          "label": "30 days",
+          "body": "30d"
+        }
+      ]
+    },
+    "storage": {
+      "type": "string",
+      "enum": [
+        "file",
+        "memory"
+      ],
+      "markdownEnumDescriptions": [
+        "Persist on disk. **Default.**",
+        "Memory only — lost when the server restarts (replicas excepted)."
+      ],
+      "default": "file",
+      "markdownDescription": "Storage backend of the bucket.\n\n⛔ **Immutable** — cannot be changed on an existing bucket; the plan flags the change and apply is blocked. Recreate the bucket instead."
+    },
+    "replicas": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "default": 1,
+      "markdownDescription": "Number of replicas (1, 3 or 5). Values > 1 need a clustered JetStream. Maps to `num_replicas`."
+    },
+    "max_bytes": {
+      "type": "integer",
+      "minimum": -1,
+      "default": -1,
+      "markdownDescription": "Maximum total size of the bucket. `-1` = unlimited. When full, puts are rejected.\n\n**Unit: bytes.** `1048576` = 1 MiB · `1073741824` = 1 GiB.",
+      "defaultSnippets": [
+        {
+          "label": "unlimited (-1)",
+          "body": -1
+        },
+        {
+          "label": "1 MiB",
+          "body": 1048576
+        },
+        {
+          "label": "64 MiB",
+          "body": 67108864
+        },
+        {
+          "label": "1 GiB",
+          "body": 1073741824
+        },
+        {
+          "label": "10 GiB",
+          "body": 10737418240
+        }
+      ]
+    },
+    "max_value_size": {
+      "type": "integer",
+      "minimum": -1,
+      "default": -1,
+      "markdownDescription": "Largest value accepted. `-1` = unlimited (bounded by the server's `max_payload`). Maps to the stream's `max_msg_size`.\n\n**Unit: bytes.** `1048576` = 1 MiB · `1073741824` = 1 GiB.",
+      "defaultSnippets": [
+        {
+          "label": "unlimited (-1)",
+          "body": -1
+        },
+        {
+          "label": "1 MiB",
+          "body": 1048576
+        },
+        {
+          "label": "64 MiB",
+          "body": 67108864
+        },
+        {
+          "label": "1 GiB",
+          "body": 1073741824
+        },
+        {
+          "label": "10 GiB",
+          "body": 10737418240
+        }
+      ]
+    },
+    "compression": {
+      "type": "boolean",
+      "default": false,
+      "markdownDescription": "S2-compress the bucket's storage (server 2.10+). Can be changed on an existing bucket."
+    },
+    "metadata": {
+      "type": "object",
+      "markdownDescription": "Free-form string metadata stored with the bucket (server 2.10+), e.g. owner, team, ticket.\n\nKeys starting with `_nats` are reserved: the server adds `_nats.ver`, `_nats.level` … itself and plans ignore them.",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "propertyNames": {
+        "not": {
+          "pattern": "^_nats"
+        },
+        "errorMessage": "Keys starting with _nats are reserved for the server"
+      },
+      "defaultSnippets": [
+        {
+          "label": "owner / team",
+          "body": {
+            "owner": "${1:team-name}",
+            "ticket": "${2}"
+          }
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "defaultSnippets": [
+    {
+      "label": "New KV bucket",
+      "body": {
+        "bucket": "${1:config}",
+        "description": "${2}",
+        "history": 5,
+        "ttl": 0,
+        "storage": "file",
+        "replicas": 1,
+        "max_bytes": -1,
+        "max_value_size": -1,
+        "compression": false
+      }
+    }
+  ]
+}

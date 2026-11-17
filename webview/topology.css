@@ -1,0 +1,634 @@
+/* JetStream topology graph. Colours come from the design-system tokens only: node types use
+   categorical slots (stream 1 blue · KV 2 orange · object store 3 magenta · endpoint 5 cyan ·
+   consumer 7 purple), status uses the tone tokens and is always paired with an icon. */
+
+:root {
+  --tp-stream: var(--series-1);
+  --tp-kv: var(--series-2);
+  --tp-obj: var(--series-3);
+  --tp-endpoint: var(--series-5);
+  --tp-consumer: var(--series-7);
+  --tp-subject: var(--muted);
+  --tp-external: var(--muted);
+  --tp-edge: color-mix(in srgb, var(--vscode-foreground) 30%, transparent);
+  --tp-edge-strong: color-mix(in srgb, var(--vscode-foreground) 58%, transparent);
+  --tp-canvas-bg: var(--surface-sunken);
+}
+
+/* ---- filter bar ------------------------------------------------------------------------- */
+
+.tp-search {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  position: relative;
+  min-width: 0;
+  flex: 0 1 320px;
+}
+.tp-search > .codicon {
+  position: absolute;
+  left: 7px;
+  color: var(--muted);
+  pointer-events: none;
+}
+.tp-search input {
+  padding-left: 26px;
+  flex: 1;
+  min-width: 140px;
+}
+.tp-search-count {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.tp-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+/* ---- graph card ------------------------------------------------------------------------- */
+
+.tp-graph-card .ds-card-body.ds-flush {
+  overflow: hidden;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+.tp-canvas-wrap {
+  position: relative;
+}
+.tp-canvas {
+  position: relative;
+  height: clamp(420px, calc(100vh - 330px), 1400px);
+  overflow: hidden;
+  background: var(--tp-canvas-bg);
+  --vz-surface: var(--tp-canvas-bg);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.tp-canvas.tp-dragging {
+  cursor: grabbing;
+}
+.tp-svg {
+  display: block;
+  font-family: var(--vscode-font-family);
+}
+.tp-svg:focus {
+  outline: none;
+}
+.tp-dot {
+  fill: var(--vz-grid);
+}
+.tp-bg {
+  pointer-events: all;
+}
+
+.sr-only-focusable {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  z-index: 5;
+}
+.sr-only-focusable:focus {
+  width: auto;
+  height: auto;
+  clip: auto;
+  padding: 2px 8px;
+  border-radius: var(--radius);
+  border: 1px solid var(--focus);
+  background: var(--vz-tip-bg);
+  color: var(--vz-tip-fg);
+  font: inherit;
+  font-size: var(--fs-xs);
+}
+
+/* ---- nodes ------------------------------------------------------------------------------ */
+
+.tp-node {
+  cursor: pointer;
+  --tp-c: var(--muted);
+  transition: opacity 0.15s;
+}
+.tp-node:focus {
+  outline: none;
+}
+.tp-k-stream { --tp-c: var(--tp-stream); }
+.tp-k-kv { --tp-c: var(--tp-kv); }
+.tp-k-obj { --tp-c: var(--tp-obj); }
+.tp-k-consumer { --tp-c: var(--tp-consumer); }
+.tp-k-endpoint { --tp-c: var(--tp-endpoint); }
+.tp-k-subject { --tp-c: var(--tp-subject); }
+.tp-k-external { --tp-c: var(--tp-external); }
+
+.tp-box {
+  fill: color-mix(in srgb, var(--tp-c) 9%, var(--surface));
+  stroke: color-mix(in srgb, var(--tp-c) 50%, var(--border));
+  stroke-width: 1;
+}
+.tp-k-subject .tp-box {
+  fill: var(--surface);
+  stroke: var(--border);
+  stroke-dasharray: 3 2;
+}
+.tp-k-external .tp-box {
+  fill: transparent;
+  stroke: var(--tp-edge-strong);
+  stroke-dasharray: 5 3;
+}
+.tp-more .tp-box {
+  stroke-dasharray: 2 3;
+}
+.tp-accent {
+  fill: var(--tp-c);
+}
+.tp-kind-glyph {
+  fill: var(--tp-c);
+}
+.tp-k-subject .tp-kind-glyph,
+.tp-k-external .tp-kind-glyph {
+  fill: var(--muted);
+}
+.tp-flag-glyph {
+  fill: var(--muted);
+}
+.tp-label {
+  fill: var(--vscode-foreground);
+  font-size: 12px;
+  font-weight: var(--fw-semibold);
+  pointer-events: none;
+}
+.tp-k-subject .tp-label {
+  font-size: 11px;
+  font-weight: var(--fw-regular);
+}
+.tp-mono {
+  font-family: var(--mono);
+}
+.tp-sub {
+  fill: var(--muted);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.tp-halo {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 2;
+}
+.tp-node:hover .tp-box {
+  stroke: var(--tp-c);
+  fill: color-mix(in srgb, var(--tp-c) 15%, var(--surface));
+}
+.tp-k-subject:hover .tp-box,
+.tp-k-external:hover .tp-box {
+  stroke: var(--tp-edge-strong);
+}
+.tp-node:focus-visible .tp-halo,
+.tp-pinned .tp-halo {
+  stroke: var(--focus);
+}
+.tp-match .tp-halo {
+  stroke: var(--vscode-editor-findMatchHighlightBorder, var(--vscode-editorWarning-foreground, var(--warn)));
+  stroke-dasharray: 4 3;
+}
+.tp-active .tp-halo {
+  stroke: var(--vscode-editor-findMatchBorder, var(--warn));
+  stroke-width: 2.5;
+  stroke-dasharray: none;
+}
+.tp-dim {
+  opacity: 0.22;
+}
+
+/* status: stroke + glyph (never colour alone) */
+.tp-node.tp-tone-warn .tp-box {
+  stroke: var(--warn);
+}
+.tp-node.tp-tone-danger .tp-box {
+  stroke: var(--danger);
+  stroke-width: 1.5;
+}
+.tp-tone-glyph.tp-tone-warn {
+  fill: var(--warn);
+}
+.tp-tone-glyph.tp-tone-danger {
+  fill: var(--danger);
+}
+
+.tp-badge rect {
+  fill: var(--vscode-badge-background);
+}
+.tp-badge text {
+  fill: var(--vscode-badge-foreground);
+  font-size: 10.5px;
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+}
+.tp-badge.tp-tone-neutral rect {
+  fill: var(--vz-track);
+}
+.tp-badge.tp-tone-neutral text {
+  fill: var(--muted);
+}
+.tp-badge.tp-tone-info rect {
+  fill: color-mix(in srgb, var(--info) 22%, var(--surface));
+  stroke: color-mix(in srgb, var(--info) 55%, transparent);
+}
+.tp-badge.tp-tone-info text {
+  fill: var(--vscode-foreground);
+}
+.tp-badge.tp-tone-warn rect {
+  fill: color-mix(in srgb, var(--warn) 24%, var(--surface));
+  stroke: var(--warn);
+}
+.tp-badge.tp-tone-warn text,
+.tp-badge.tp-tone-danger text {
+  fill: var(--vscode-foreground);
+}
+.tp-badge.tp-tone-danger rect {
+  fill: color-mix(in srgb, var(--danger) 24%, var(--surface));
+  stroke: var(--danger);
+}
+
+/* level of detail when zoomed far out */
+.tp-lod-low .tp-sub,
+.tp-lod-low .tp-elabel,
+.tp-lod-low .tp-flag-glyph {
+  display: none;
+}
+
+/* ---- edges ------------------------------------------------------------------------------ */
+
+.tp-edge-line {
+  fill: none;
+  stroke: var(--tp-edge);
+  stroke-width: 1.25;
+}
+.tp-edge-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 10;
+}
+.tp-e-mirror .tp-edge-line,
+.tp-e-source .tp-edge-line {
+  stroke: var(--tp-edge-strong);
+  stroke-dasharray: 6 4;
+  stroke-width: 1.5;
+}
+.tp-e-serves .tp-edge-line {
+  stroke: color-mix(in srgb, var(--tp-endpoint) 70%, transparent);
+  stroke-dasharray: 2 3;
+}
+.tp-edge.tp-tone-warn .tp-edge-line {
+  stroke: var(--warn);
+}
+.tp-edge.tp-tone-danger .tp-edge-line {
+  stroke: var(--danger);
+}
+.tp-edge.tp-hl .tp-edge-line {
+  stroke: var(--vscode-foreground);
+  stroke-width: 1.75;
+}
+.tp-edge.tp-dim {
+  opacity: 0.12;
+}
+.tp-elabel {
+  fill: var(--muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  paint-order: stroke;
+  stroke: var(--tp-canvas-bg);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+.tp-edge.tp-tone-warn .tp-elabel {
+  fill: var(--vscode-foreground);
+}
+.tp-arrow {
+  fill: var(--tp-edge);
+}
+.tp-arrow-hl {
+  fill: var(--vscode-foreground);
+}
+.tp-arrow-mirror {
+  fill: var(--tp-edge-strong);
+}
+.tp-arrow-serves {
+  fill: var(--tp-endpoint);
+}
+.tp-arrow-warn {
+  fill: var(--warn);
+}
+.tp-arrow-danger {
+  fill: var(--danger);
+}
+
+/* ---- overlays --------------------------------------------------------------------------- */
+
+.tp-overlay {
+  position: absolute;
+  z-index: 10;
+  cursor: default;
+}
+.tp-zoom {
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  box-shadow: 0 1px 4px var(--shadow);
+}
+.tp-zoom-pct {
+  min-width: 40px;
+  text-align: right;
+  padding: 0 6px 0 2px;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+.tp-help {
+  right: 10px;
+  bottom: 8px;
+  pointer-events: none;
+  font-size: var(--fs-2xs);
+  padding: 2px 6px;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--tp-canvas-bg) 80%, transparent);
+}
+.tp-hidden {
+  display: none;
+}
+.tp-legend {
+  left: 8px;
+  bottom: 8px;
+  max-width: min(320px, calc(100% - 16px));
+  max-height: calc(100% - 60px);
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  --vz-surface: var(--surface-raised);
+  box-shadow: 0 1px 4px var(--shadow);
+  font-size: var(--fs-xs);
+}
+.tp-legend-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--vscode-foreground);
+  font: inherit;
+  font-weight: var(--fw-semibold);
+  padding: 4px 8px;
+  cursor: pointer;
+}
+.tp-legend-toggle:hover {
+  background: var(--hover);
+}
+.tp-legend-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 2px 10px 8px;
+}
+.tp-legend-body .vz-legend-v {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, auto));
+  gap: 2px 12px;
+}
+.tp-legend-body .vz-legend-item {
+  font-size: var(--fs-xs);
+}
+.tp-legend-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  color: var(--muted);
+}
+.tp-legend-status .codicon {
+  font-size: 12px;
+  vertical-align: -2px;
+}
+.tp-badge-chip {
+  display: inline-block;
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--info) 22%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--info) 55%, transparent);
+  color: var(--vscode-foreground);
+  font-size: var(--fs-2xs);
+  text-align: center;
+  line-height: 14px;
+}
+
+.tp-tip-kind {
+  color: var(--muted);
+  font-weight: var(--fw-regular);
+}
+.tp-tip-hint {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border-subtle);
+  color: var(--muted);
+  font-size: var(--fs-2xs);
+}
+
+/* pinned action card */
+.tp-pop {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--vz-tip-border);
+  border-radius: var(--radius-lg);
+  background: var(--vz-tip-bg);
+  color: var(--vz-tip-fg);
+  --vz-surface: var(--vz-tip-bg);
+  box-shadow: 0 4px 16px var(--shadow);
+  max-height: calc(100% - 16px);
+  overflow: auto;
+}
+.tp-pop-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  --tp-c: var(--muted);
+}
+.tp-pop-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border-radius: var(--radius);
+  color: var(--tp-c);
+  background: color-mix(in srgb, var(--tp-c) 16%, transparent);
+}
+.tp-pop-titles {
+  flex: 1;
+  min-width: 0;
+}
+.tp-pop-kind {
+  font-size: var(--fs-2xs);
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.tp-pop-name {
+  font-weight: var(--fw-semibold);
+  overflow-wrap: anywhere;
+}
+.tp-pop-issues {
+  list-style: none;
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: var(--radius);
+  background: var(--warn-bg);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--fs-sm);
+}
+.tp-pop-issues-danger {
+  background: var(--danger-bg);
+}
+.tp-pop-issues li {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+.tp-pop-issues li.tone-danger {
+  color: var(--vscode-foreground);
+}
+.tp-pop-issues li span {
+  color: var(--vscode-foreground);
+}
+.tp-pop-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.tp-pop-hint {
+  font-size: var(--fs-2xs);
+}
+
+/* ---- list view and side cards ------------------------------------------------------------ */
+
+.tp-kind-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.tp-kind-cell .codicon {
+  color: var(--tp-c);
+}
+.tp-ellipsis {
+  display: inline-block;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+.tp-row-actions {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.tp-wait {
+  padding: 24px 0;
+  text-align: center;
+}
+.tp-issues {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 320px;
+  overflow: auto;
+}
+.tp-issue {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px 12px 7px 10px;
+  border-left: 3px solid var(--tone-c, transparent);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.tp-issue.ds-tone-warn {
+  --tone-c: var(--warn);
+}
+.tp-issue.ds-tone-danger {
+  --tone-c: var(--danger);
+}
+.tp-issue > .codicon {
+  margin-top: 2px;
+}
+.tp-issue.ds-tone-warn > .codicon {
+  color: var(--warn);
+}
+.tp-issue.ds-tone-danger > .codicon {
+  color: var(--danger);
+}
+.tp-issue-text {
+  flex: 1;
+  min-width: 0;
+}
+.tp-issue-name {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-wrap: anywhere;
+}
+.tp-issue-why {
+  color: var(--muted);
+}
+.tp-issue-actions {
+  display: flex;
+  gap: 2px;
+  flex: none;
+}
+
+/* ---- high contrast ------------------------------------------------------------------------ */
+
+body.vscode-high-contrast .tp-box {
+  fill: var(--surface);
+  stroke: var(--vscode-contrastBorder, var(--border));
+}
+body.vscode-high-contrast .tp-node:hover .tp-box {
+  stroke: var(--vscode-contrastActiveBorder, var(--focus));
+}
+body.vscode-high-contrast .tp-edge-line {
+  stroke: var(--vscode-foreground);
+  opacity: 0.7;
+}
+body.vscode-high-contrast .tp-dim {
+  opacity: 0.35;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tp-node {
+    transition: none;
+  }
+}
+
+/* Design-system workaround: KPI InfoTip tooltips (::after, absolutely positioned) near the right
+   edge widen .ds-body's scroll area and cause a horizontal scrollbar. Clip instead of scroll. */
+.ds-body {
+  overflow-x: clip;
+}

@@ -1,0 +1,87 @@
+.mb-summary {
+  gap: 6px;
+  min-width: 0;
+}
+
+.mb-subjects {
+  display: inline-flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.mb-subject {
+  font-family: var(--mono);
+  font-size: 0.85em;
+  padding: 0 5px;
+  border-radius: 3px;
+  background: var(--vscode-textCodeBlock-background, var(--surface-2));
+  cursor: pointer;
+}
+
+.mb-subject:hover {
+  color: var(--accent);
+}
+
+.mb-filter {
+  flex: 1 1 260px;
+  min-width: 200px;
+  max-width: 460px;
+  gap: 4px;
+}
+
+.mb-filter .input {
+  flex: 1;
+}
+
+.mb-nav .seg-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.mb-nav .codicon {
+  font-size: 13px;
+}
+
+.mb-seq {
+  width: 80px;
+}
+
+.mb-time {
+  width: 190px;
+}
+
+.mb-table td.mb-subj {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mb-hdr-icon {
+  margin-left: 4px;
+  font-size: 11px !important;
+  vertical-align: middle;
+}
+
+.mb-detail-subject {
+  font-family: var(--mono);
+  word-break: break-all;
+}
+
+.mb-confirm {
+  border: 1px solid var(--vscode-inputValidation-errorBorder);
+  background: var(--vscode-inputValidation-errorBackground);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mb-confirm p {
+  margin: 0;
+}
+
+.mb-warn {
+  color: var(--warn);
+}
